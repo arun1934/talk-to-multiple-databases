@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Chat Agent - NPS Analytics</title>
+    <style>
+        // Create new conversation
+        async function createNewConversation() {
+            try {
+                const newConversation = {
+                    id: Date.now().toString(),
+                    title: 'New conversation',
+                    messages: [],
+                    timestamp: Date.now(),
+                    createdAt: Date.now()
+                };
+
+                await saveConversation(newConversation);
+                conversations.unshift(newConversation);
+                currentConversationId = newConversation.id;
+
+                // Clear chat and show welcome message
+                const chatLog = document.getElementById('chat-log');
+                chatLog.innerHTML = '';
+                const welcomeMsg = createMessageElement('agent', '**Hello! I\'m your SQL assistant.**\n\nAsk me questions about your NPS database in natural language, and I\'ll help you query and analyze your data.\n\n**Available tables:**\n• NPS Feedback Table\n• Products Table\n\nFeel free to ask anything about your data!');
+                chatLog.appendChild(welcomeMsg);
+
+                updateSidebar();
+                return newConversation;
+            } catch (error) {
+                console.error('Error in createNewConversation:', error);
+                throw error;
+            }
+        }:root {
+            --primary-color: #7a5d04;
+            --sidebar-bg: #f8f9fa;
+            --sidebar-hover: #e9ecef;
+            --chat-bg: #ffffff;
+            --user-msg-bg: #e3f2fd;
+            --agent-msg-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #212529;
+            --secondary-text: #6c757d;
+            --accent-color: #0d6efd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--chat-bg);
+        }
+
+        #sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+        }
+
+        #sidebar.collapsed {
+            width: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .app-logo {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        #new-chat-btn {
+            margin: 16px;
+            padding: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+        }
+
+        #new-chat-btn:hover {
+            opacity: 0.9;
+        }
+
+        #chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .history-date-group {
+            margin-bottom: 16px;
+        }
+
+        .history-date-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--secondary-text);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .history-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-color);
+            transition: background-color 0.2s;
+        }
+
+        .history-item:hover {
+            background-color: var(--sidebar-hover);
+        }
+
+        .history-item.active {
+            background-color: var(--sidebar-hover);
+            font-weight: 500;
+        }
+
+        .history-item-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .history-item-icon {
+            color: var(--secondary-text);
+        }
+
+        .history-item span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--chat-bg);
+            overflow: hidden;
+        }
+
+        .top-bar {
+            height: 60px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            color: var(--text-color);
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .sidebar-toggle:hover {
+            background-color: var(--sidebar-hover);
+        }
+
+        .top-bar-title {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .top-bar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #chat-log {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message-row {
+            display: flex;
+            gap: 16px;
+            width: 100%;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .user .avatar {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .agent .avatar {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .message-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bubble {
+            line-height: 1.6;
+            font-size: 15px;
+            color: var(--text-color);
+        }
+
+        .bubble strong {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .bubble br + br {
+            display: none; /* Prevent double line breaks */
+        }
+
+        .user .bubble {
+            background: var(--user-msg-bg);
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 85%;
+            align-self: flex-start;
+        }
+
+        .agent .bubble {
+            background: var(--agent-msg-bg);
+            padding: 12px 16px;
+            border-radius: 18px;
+        }
+
+        #input-container {
+            border-top: 1px solid var(--border-color);
+            padding: 20px;
+            background: var(--chat-bg);
+        }
+
+        #question-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        #question {
+            width: 100%;
+            padding: 12px 50px 12px 16px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            resize: none;
+            min-height: 48px;
+            max-height: 200px;
+            background: var(--chat-bg);
+            color: var(--text-color);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #question:focus {
+            border-color: var(--accent-color);
+        }
+
+        #send-btn {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            width: 32px;
+            height: 32px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+
+        #send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #send-btn:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        #spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #spinner span {
+            width: 8px;
+            height: 8px;
+            margin: 0 4px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        #spinner span:nth-child(1) { animation-delay: -0.32s; }
+        #spinner span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .sql-display {
+            margin-top: 12px;
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .sql-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f1f3f5;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sql-title {
+            font-weight: 500;
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .sql-toggle {
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .sql-toggle:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+
+        .sql-content {
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .suggestions-container {
+            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background-color: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .suggestions-label {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .suggestions-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion-chip {
+            background: #e8f0fe;
+            color: #1967d2;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: none;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .suggestion-chip:hover {
+            background: #d2e3fc;
+        }
+
+        .schema-info {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            width: 300px;
+            background: var(--chat-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            display: none;
+        }
+
+        .schema-info.visible {
+            display: block;
+        }
+
+        .schema-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-color);
+        }
+
+        .schema-table {
+            margin-bottom: 16px;
+        }
+
+        .schema-table h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-color);
+        }
+
+        .schema-columns {
+            font-size: 13px;
+            color: var(--secondary-text);
+            line-height: 1.5;
+        }
+
+        #sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .sidebar-btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-btn.delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .sidebar-btn.delete:hover {
+            background-color: #c82333;
+        }
+
+        .sidebar-btn.schema {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .sidebar-btn.schema:hover {
+            background-color: #5a6268;
+        }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            #sidebar {
+                position: fixed;
+                left: -260px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            #sidebar.visible {
+                left: 0;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: none;
+                z-index: 999;
+            }
+
+            .sidebar-overlay.visible {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar for chat history -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h1 class="app-logo">NPS Analytics</h1>
+        </div>
+
+        <button id="new-chat-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+            </svg>
+            New Chat
+        </button>
+
+        <div id="chat-history">
+            <!-- Chat history will be populated here -->
+        </div>
+
+        <div id="sidebar-footer">
+            <button class="sidebar-btn schema" onclick="toggleSchemaInfo()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h18v18H3V3z"></path>
+                    <path d="M3 9h18M3 15h18M9 3v18"></path>
+                </svg>
+                View Schema
+            </button>
+            <button class="sidebar-btn delete" onclick="clearSession()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"></path>
+                </svg>
+                Clear Session
+            </button>
+        </div>
+    </div>
+
+    <!-- Main chat area -->
+    <div id="main">
+        <div class="top-bar">
+            <button class="sidebar-toggle" onclick="toggleSidebar()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h18M3 6h18M3 18h18"></path>
+                </svg>
+            </button>
+            <div class="top-bar-title">SQL Chat Assistant</div>
+            <div class="top-bar-actions">
+                <!-- Additional actions can go here -->
+            </div>
+        </div>
+
+        <div id="chat-container">
+            <div id="chat-log">
+                <!-- Welcome message -->
+                <div class="message-row agent">
+                    <div class="avatar">AI</div>
+                    <div class="message-content">
+                        <div class="bubble">
+                            <strong>Hello! I'm your SQL assistant.</strong><br><br>
+                            Ask me questions about your NPS database in natural language, and I'll help you query and analyze your data.<br><br>
+                            <strong>Available tables:</strong><br>
+                            • NPS Feedback Table<br>
+                            • Products Table<br><br>
+                            Feel free to ask anything about your data!
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="spinner" style="display: none;">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <div id="input-container">
+            <div id="question-wrapper">
+                <textarea id="question" rows="1" placeholder="Ask a question about your NPS data..."></textarea>
+                <button id="send-btn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schema info panel -->
+    <div id="schema-info" class="schema-info">
+        <div class="schema-title">Database Schema</div>
+        <div class="schema-table">
+            <h4>NPS Feedback Table</h4>
+            <div class="schema-columns">
+                feedback_id, product_id, rating, comment, category, subcategory, region, carpenter_name, driver_name, created_at
+            </div>
+        </div>
+        <div class="schema-table">
+            <h4>Products Table</h4>
+            <div class="schema-columns">
+                product_id, product_name, description, price, sku, created_at
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <script>
+        // Database configuration
+        const DB_NAME = 'SQLChatDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'conversations';
+
+        let db = null;
+        let currentConversationId = null;
+        let conversations = [];
+
+        // Storage adapter
+        let storageAdapter = null;
+
+        // IndexedDB adapter
+        const indexedDBAdapter = {
+            init: async function() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        db = request.result;
+                        resolve(db);
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                            store.createIndex('timestamp', 'timestamp', { unique: false });
+                            store.createIndex('title', 'title', { unique: false });
+                        }
+                    };
+                });
+            },
+            saveConversation: async function(conversation) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put(conversation);
+
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve();
+                });
+            },
+            loadConversations: async function() {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result);
+                });
+            },
+            deleteConversation: async function(id) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.delete(id);
+
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve();
+                });
+            }
+        };
+
+        // LocalStorage adapter
+        const localStorageAdapter = {
+            init: async function() {
+                return Promise.resolve();
+            },
+            saveConversation: async function(conversation) {
+                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                const index = conversations.findIndex(c => c.id === conversation.id);
+
+                if (index >= 0) {
+                    conversations[index] = conversation;
+                } else {
+                    conversations.push(conversation);
+                }
+
+                localStorage.setItem('conversations', JSON.stringify(conversations));
+                return Promise.resolve();
+            },
+            loadConversations: async function() {
+                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                return Promise.resolve(conversations);
+            },
+            deleteConversation: async function(id) {
+                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                const filtered = conversations.filter(c => c.id !== id);
+                localStorage.setItem('conversations', JSON.stringify(filtered));
+                return Promise.resolve();
+            }
+        };
+
+        // Initialize storage adapter
+        async function initStorage() {
+            try {
+                if (typeof indexedDB !== 'undefined' && indexedDB !== null) {
+                    // Try IndexedDB first
+                    await indexedDBAdapter.init();
+                    storageAdapter = indexedDBAdapter;
+                    console.log('Using IndexedDB for storage');
+                } else {
+                    throw new Error('IndexedDB not available');
+                }
+            } catch (error) {
+                console.warn('IndexedDB not available, falling back to localStorage:', error);
+                storageAdapter = localStorageAdapter;
+                await storageAdapter.init();
+                console.log('Using localStorage for storage');
+            }
+        }
+
+        // Replace direct IndexedDB functions with adapter
+        async function saveConversation(conversation) {
+            return storageAdapter.saveConversation(conversation);
+        }
+
+        async function loadConversations() {
+            const result = await storageAdapter.loadConversations();
+            conversations = result.sort((a, b) => b.timestamp - a.timestamp);
+            return conversations;
+        }
+
+        async function deleteConversation(id) {
+            return storageAdapter.deleteConversation(id);
+        }
+
+        // Simple initialization fallback
+        function simpleInit() {
+            console.log('Using simple initialization');
+            currentConversationId = Date.now().toString();
+            conversations = [{
+                id: currentConversationId,
+                title: 'Chat',
+                messages: [],
+                timestamp: Date.now(),
+                createdAt: Date.now()
+            }];
+
+            // Show welcome message
+            const chatLog = document.getElementById('chat-log');
+            chatLog.innerHTML = '';
+            const welcomeMsg = createMessageElement('agent', '**Hello! I\'m your SQL assistant.**\n\nAsk me questions about your NPS database in natural language, and I\'ll help you query and analyze your data.\n\n**Available tables:**\n• NPS Feedback Table\n• Products Table\n\nFeel free to ask anything about your data!');
+            chatLog.appendChild(welcomeMsg);
+
+            updateSidebar();
+        }
+
+        // Initialize the application
+        async function initializeApp() {
+            try {
+                console.log('Starting initialization...');
+
+                // Try full initialization
+                try {
+                    await initStorage();
+                    await loadConversations();
+
+                    if (conversations.length === 0) {
+                        await createNewConversation();
+                    } else {
+                        await loadConversation(conversations[0].id);
+                    }
+
+                    updateSidebar();
+                    console.log('Full initialization complete');
+                } catch (error) {
+                    console.error('Full initialization failed, using simple init:', error);
+                    simpleInit();
+                }
+
+            } catch (error) {
+                console.error('Critical error in initializeApp:', error);
+                simpleInit();
+            }
+        }
+
+        // Get date category for a timestamp
+        function getDateCategory(timestamp) {
+            const now = new Date();
+            const date = new Date(timestamp);
+
+            // Reset hours for comparison
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const oneWeekAgo = new Date(today);
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+            if (compareDate.getTime() === today.getTime()) {
+                return 'Today';
+            } else if (compareDate.getTime() === yesterday.getTime()) {
+                return 'Yesterday';
+            } else if (compareDate > oneWeekAgo) {
+                return 'Previous 7 Days';
+            } else if (compareDate > thirtyDaysAgo) {
+                return 'Previous 30 Days';
+            } else {
+                // Group by month for older conversations
+                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                                  'July', 'August', 'September', 'October', 'November', 'December'];
+                return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+            }
+        }
+
+        // Update sidebar with categorized conversations
+        function updateSidebar() {
+            const historyContainer = document.getElementById('chat-history');
+            historyContainer.innerHTML = '';
+
+            // Group conversations by date category
+            const groups = {};
+            conversations.forEach(conv => {
+                const category = getDateCategory(conv.timestamp);
+                if (!groups[category]) {
+                    groups[category] = [];
+                }
+                groups[category].push(conv);
+            });
+
+            // Sort categories
+            const categoryOrder = ['Today', 'Yesterday', 'Previous 7 Days', 'Previous 30 Days'];
+            const sortedCategories = Object.keys(groups).sort((a, b) => {
+                const aIndex = categoryOrder.indexOf(a);
+                const bIndex = categoryOrder.indexOf(b);
+
+                if (aIndex !== -1 && bIndex !== -1) {
+                    return aIndex - bIndex;
+                } else if (aIndex !== -1) {
+                    return -1;
+                } else if (bIndex !== -1) {
+                    return 1;
+                } else {
+                    // Sort month/year categories by date
+                    return new Date(b).getTime() - new Date(a).getTime();
+                }
+            });
+
+            // Display each category
+            sortedCategories.forEach(category => {
+                const group = groups[category];
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'history-date-group';
+
+                const label = document.createElement('div');
+                label.className = 'history-date-label';
+                label.textContent = category;
+                groupDiv.appendChild(label);
+
+                group.forEach(conv => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    if (conv.id === currentConversationId) {
+                        item.classList.add('active');
+                    }
+
+                    const content = document.createElement('div');
+                    content.className = 'history-item-content';
+                    content.innerHTML = `
+                        <svg class="history-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <span>${conv.title}</span>
+                    `;
+
+                    content.onclick = () => loadConversation(conv.id);
+                    item.appendChild(content);
+
+                    // Add delete button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-conversation-btn';
+                    deleteBtn.innerHTML = '×';
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteConversationHandler(conv.id);
+                    };
+                    item.appendChild(deleteBtn);
+
+                    groupDiv.appendChild(item);
+                });
+
+                historyContainer.appendChild(groupDiv);
+            });
+        }
+
+        // Load a specific conversation
+        async function loadConversation(id) {
+            try {
+                currentConversationId = id;
+                const conversation = conversations.find(c => c.id === id);
+
+                if (conversation) {
+                    const chatLog = document.getElementById('chat-log');
+                    chatLog.innerHTML = '';
+
+                    // Add welcome message
+                    const welcomeMsg = createMessageElement('agent', '**Hello! I\'m your SQL assistant.**\n\nAsk me questions about your NPS database in natural language, and I\'ll help you query and analyze your data.\n\n**Available tables:**\n• NPS Feedback Table\n• Products Table\n\nFeel free to ask anything about your data!');
+                    chatLog.appendChild(welcomeMsg);
+
+                    // Add all messages
+                    if (conversation.messages) {
+                        conversation.messages.forEach(msg => {
+                            const msgElement = createMessageElement(msg.role, msg.content);
+                            chatLog.appendChild(msgElement);
+
+                            if (msg.sql) {
+                                addSqlDisplay(msgElement, msg.sql);
+                            }
+
+                            if (msg.suggestions) {
+                                addSuggestions(msgElement, msg.suggestions);
+                            }
+                        });
+                    }
+
+                    updateSidebar();
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }
+            } catch (error) {
+                console.error('Error in loadConversation:', error);
+            }
+        }
+
+        // Delete conversation handler
+        async function deleteConversationHandler(id) {
+            if (confirm('Are you sure you want to delete this conversation?')) {
+                await deleteConversation(id);
+                conversations = conversations.filter(c => c.id !== id);
+
+                if (currentConversationId === id) {
+                    if (conversations.length > 0) {
+                        await loadConversation(conversations[0].id);
+                    } else {
+                        createNewConversation();
+                    }
+                }
+
+                updateSidebar();
+            }
+        }
+
+        // Add message to current conversation
+        async function addMessageToConversation(role, content, additionalData = {}) {
+            const conversation = conversations.find(c => c.id === currentConversationId);
+            if (conversation) {
+                const message = {
+                    role,
+                    content,
+                    timestamp: Date.now(),
+                    ...additionalData
+                };
+
+                conversation.messages.push(message);
+                conversation.timestamp = Date.now(); // Update last activity
+
+                // Update title if it's the first user message
+                if (conversation.messages.filter(m => m.role === 'user').length === 1 && role === 'user') {
+                    conversation.title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+                }
+
+                await saveConversation(conversation);
+                updateSidebar();
+            }
+        }
+
+        // Initialize the application
+        async function initializeApp() {
+            try {
+                await initDB();
+                await loadConversations();
+
+                if (conversations.length === 0) {
+                    createNewConversation();
+                } else {
+                    await loadConversation(conversations[0].id);
+                }
+
+                updateSidebar();
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                alert('Failed to initialize the application. Please refresh the page.');
+            }
+        }
+
+        // Add styles for conversation management
+        const style = document.createElement('style');
+        style.textContent = `
+            .delete-conversation-btn {
+                display: none;
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                color: #dc3545;
+                cursor: pointer;
+                font-size: 18px;
+                padding: 0 5px;
+            }
+
+            .history-item:hover .delete-conversation-btn {
+                display: block;
+            }
+
+            .history-item {
+                position: relative;
+            }
+
+            .history-date-label {
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--secondary-text);
+                margin: 16px 0 8px 0;
+                text-transform: uppercase;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Create message element
+        function createMessageElement(role, content) {
+            const messageRow = document.createElement('div');
+            messageRow.className = `message-row ${role}`;
+
+            // Format content with bold and line breaks
+            let formattedContent = content;
+            if (role === 'agent') {
+                // Replace **text** with <strong>text</strong> for bold
+                formattedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                // Replace \n with <br> for line breaks
+                formattedContent = formattedContent.replace(/\n/g, '<br>');
+
+                // Add proper spacing for lists
+                formattedContent = formattedContent.replace(/• /g, '<br>• ');
+                formattedContent = formattedContent.replace(/- /g, '<br>- ');
+                formattedContent = formattedContent.replace(/(\d+)\. /g, '<br>$1. ');
+
+                // Clean up any double line breaks at the start
+                formattedContent = formattedContent.replace(/^(<br>)+/, '');
+            }
+
+            messageRow.innerHTML = `
+                <div class="avatar">${role === 'user' ? 'U' : 'AI'}</div>
+                <div class="message-content">
+                    <div class="bubble">${formattedContent}</div>
+                </div>
+            `;
+            return messageRow;
+        }
+
+        // Add SQL display
+        function addSqlDisplay(messageElement, sql) {
+            const sqlContainer = document.createElement('div');
+            sqlContainer.className = 'sql-display';
+
+            const sqlHeader = document.createElement('div');
+            sqlHeader.className = 'sql-header';
+            sqlHeader.innerHTML = `
+                <span class="sql-title">SQL Query</span>
+                <button class="sql-toggle" onclick="toggleSql(this)">Show SQL</button>
+            `;
+
+            const sqlContent = document.createElement('div');
+            sqlContent.className = 'sql-content';
+            sqlContent.style.display = 'none';
+            sqlContent.textContent = sql;
+
+            sqlContainer.appendChild(sqlHeader);
+            sqlContainer.appendChild(sqlContent);
+            messageElement.querySelector('.message-content').appendChild(sqlContainer);
+        }
+
+        // Toggle SQL visibility
+        function toggleSql(button) {
+            const sqlContent = button.parentElement.nextElementSibling;
+            if (sqlContent.style.display === 'none') {
+                sqlContent.style.display = 'block';
+                button.textContent = 'Hide SQL';
+            } else {
+                sqlContent.style.display = 'none';
+                button.textContent = 'Show SQL';
+            }
+        }
+
+        // Send message
+        async function sendMessage() {
+            console.log('sendMessage called');
+            const input = document.getElementById('question');
+            const query = input.value.trim();
+
+            console.log('Query:', query);
+            if (!query) {
+                console.log('Empty query, returning');
+                return;
+            }
+
+            const sendButton = document.getElementById('send-btn');
+            sendButton.disabled = true;
+
+            // Add user message to UI
+            const chatLog = document.getElementById('chat-log');
+            const userMsg = createMessageElement('user', query);
+            chatLog.appendChild(userMsg);
+
+            // Save user message to conversation
+            await addMessageToConversation('user', query);
+
+            // Clear input and show spinner
+            input.value = '';
+            input.style.height = 'auto';
+            document.getElementById('spinner').style.display = 'flex';
+
+            // Add empty agent message
+            const agentMsg = createMessageElement('agent', '');
+            chatLog.appendChild(agentMsg);
+            chatLog.scrollTop = chatLog.scrollHeight;
+
+            try {
+                console.log('Sending query to API...');
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        session_id: currentConversationId
+                    })
+                });
+
+                console.log('API response status:', response.status);
+                const data = await response.json();
+                console.log('API response data:', data);
+
+                if (data.error) {
+                    agentMsg.querySelector('.bubble').textContent = `Error: ${data.error}`;
+                    await addMessageToConversation('agent', `Error: ${data.error}`);
+                } else {
+                    agentMsg.querySelector('.bubble').innerHTML = createMessageElement('agent', data.answer).querySelector('.bubble').innerHTML;
+
+                    const messageData = {
+                        sql: data.sql_query,
+                        suggestions: data.suggestions
+                    };
+
+                    if (data.sql_query) {
+                        addSqlDisplay(agentMsg, data.sql_query);
+                    }
+
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        addSuggestions(agentMsg, data.suggestions);
+                    }
+
+                    // Save agent response to conversation
+                    await addMessageToConversation('agent', data.answer, messageData);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                agentMsg.querySelector('.bubble').textContent = 'Sorry, there was an error processing your request.';
+                await addMessageToConversation('agent', 'Sorry, there was an error processing your request.');
+            } finally {
+                document.getElementById('spinner').style.display = 'none';
+                sendButton.disabled = false;
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
+        }
+
+        // Add suggestions
+        function addSuggestions(messageElement, suggestions) {
+            const suggestionsContainer = document.createElement('div');
+            suggestionsContainer.className = 'suggestions-container';
+
+            // Add label
+            const label = document.createElement('div');
+            label.className = 'suggestions-label';
+            label.textContent = 'Follow-up questions:';
+            suggestionsContainer.appendChild(label);
+
+            // Add suggestions list
+            const suggestionsList = document.createElement('div');
+            suggestionsList.className = 'suggestions-list';
+
+            suggestions.forEach(suggestion => {
+                const chip = document.createElement('div');
+                chip.className = 'suggestion-chip';
+                chip.textContent = suggestion;
+                chip.onclick = () => {
+                    document.getElementById('question').value = suggestion;
+                    sendMessage();
+                };
+                suggestionsList.appendChild(chip);
+            });
+
+            suggestionsContainer.appendChild(suggestionsList);
+            messageElement.querySelector('.message-content').appendChild(suggestionsContainer);
+        }
+
+        // Handle textarea auto-resize
+        document.getElementById('question').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            document.getElementById('send-btn').disabled = this.value.trim() === '';
+        });
+
+        // Handle Enter key
+        document.getElementById('question').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (this.value.trim() !== '') {
+                    sendMessage();
+                }
+            }
+        });
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('visible');
+                overlay.classList.toggle('visible');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        }
+
+        // Toggle schema info
+        function toggleSchemaInfo() {
+            const schemaInfo = document.getElementById('schema-info');
+            schemaInfo.classList.toggle('visible');
+        }
+
+        // Clear current conversation
+        function clearSession() {
+            if (confirm('Are you sure you want to delete this conversation?')) {
+                deleteConversationHandler(currentConversationId);
+            }
+        }
+
+        // New chat
+        document.getElementById('new-chat-btn').addEventListener('click', async function() {
+            await createNewConversation();
+        });
+
+        // Create new conversation
+        async function createNewConversation() {
+            try {
+                const newConversation = {
+                    id: Date.now().toString(),
+                    title: 'New conversation',
+                    messages: [],
+                    timestamp: Date.now(),
+                    createdAt: Date.now()
+                };
+
+                await saveConversation(newConversation);
+                conversations.unshift(newConversation);
+                currentConversationId = newConversation.id;
+
+                // Clear chat and show welcome message
+                const chatLog = document.getElementById('chat-log');
+                chatLog.innerHTML = '';
+                const welcomeMsg = createMessageElement('agent', '**Hello! I\'m your SQL assistant.**\n\nAsk me questions about your NPS database in natural language, and I\'ll help you query and analyze your data.\n\n**Available tables:**\n• NPS Feedback Table\n• Products Table\n\nFeel free to ask anything about your data!');
+                chatLog.appendChild(welcomeMsg);
+
+                updateSidebar();
+                return newConversation;
+            } catch (error) {
+                console.error('Error in createNewConversation:', error);
+                throw error;
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            console.log('Initializing application...');
+            initializeApp();
+
+            // Add click handler to send button
+            document.getElementById('send-btn').addEventListener('click', function() {
+                console.log('Send button clicked');
+                sendMessage();
+            });
+
+            // Load schema
+            fetch('/api/schema')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Schema loaded:', data);
+                    // Update schema display if needed
+                })
+                .catch(error => {
+                    console.warn('Error loading schema:', error);
+                    // Continue without schema - it's already hardcoded in HTML
+                });
+        };
+    </script>
+</body>
+</html>

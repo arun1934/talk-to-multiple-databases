@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - TRINO_URL=http://trino:8080
+      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
+      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+      - postgres-nps
+      - postgres-products
+      - trino
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+    networks:
+      - app-network
+
+  celery-worker:
+    build: .
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - TRINO_URL=http://trino:8080
+      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
+      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+      - postgres-nps
+      - postgres-products
+      - trino
+    volumes:
+      - ./app:/app/app
+    networks:
+      - app-network
+
+  flower:
+    build: .
+    command: celery -A app.tasks.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-nps:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=nps_db
+    volumes:
+      - ./sql/init_nps.sql:/docker-entrypoint-initdb.d/init_nps.sql
+      - postgres_nps_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-products:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=products_db
+    volumes:
+      - ./sql/init_products.sql:/docker-entrypoint-initdb.d/init_products.sql
+      - postgres_products_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  trino:
+    image: trinodb/trino:433
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+    depends_on:
+      postgres-nps:
+        condition: service_healthy
+      postgres-products:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_nps_data:
+  postgres_products_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
