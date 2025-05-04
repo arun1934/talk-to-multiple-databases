@@ -128,7 +128,8 @@ Rules:
 4. Include relevant filters based on the question
 5. Use proper date functions for time-based queries
 6. Return only the SQL query, no explanations
-7. Do not include markdown formatting, just the raw SQL"""),
+7. Do not include markdown formatting, just the raw SQL
+8. DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database."""),
             HumanMessage(content=query)
         ])
         

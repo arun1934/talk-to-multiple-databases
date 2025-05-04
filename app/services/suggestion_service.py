@@ -99,4 +99,4 @@ Generate 3 follow-up questions:""")
             elif line and '?' in line:
                 suggestions.append(line)
         
-        return suggestions[:4]  # Return maximum 4 suggestions
+        return suggestions[:3]  # Return maximum 4 suggestions
