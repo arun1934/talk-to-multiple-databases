@@ -74,7 +74,7 @@ Ensure you have the following installed:
 1. **Clone the repository:**
 ```bash
 git clone https://github.com/arun1934/talk-to-multiple-databases
-cd sql-chat-agent
+cd talk-to-multiple-databases
 ```
 
 2. **Create the environment file:**
