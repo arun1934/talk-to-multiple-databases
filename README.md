@@ -331,19 +331,84 @@ celery-worker3:
 ```
 sql-chat-agent/
 ├── app/
-│   ├── agents/              # LLM and SQL agents
-│   ├── graphs/              # LangGraph workflows  
-│   ├── services/            # Business logic
-│   ├── tasks.py            # Celery tasks
-│   └── main.py             # FastAPI application
-├── nginx/                   # Load balancer config
-├── monitoring/              # Prometheus/Grafana configs
-├── sql/                     # Database schemas
-├── static/                  # Frontend assets
-├── trino/                   # Trino configuration
-└── docker-compose.yml       # Service orchestration
+│   ├── __init__.py
+│   ├── main.py                     # FastAPI application
+│   ├── tasks.py                    # Celery task definitions
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   └── sql_agent.py            # SQL query generation agent
+│   ├── graphs/
+│   │   ├── __init__.py
+│   │   └── correction_graph.py     # LangGraph for query correction
+│   └── services/
+│       ├── __init__.py
+│       ├── memory_service.py       # Conversation memory management
+│       └── suggestion_service.py   # Follow-up suggestions
+├── static/
+│   └── index.html                  # Web chat interface
+├── sql/
+│   ├── init_nps.sql                # NPS database schema
+│   └── init_products.sql           # Products database schema
+├── trino/
+│   └── catalog/
+│       ├── nps_db.properties       # NPS database connector config
+│       └── products_db.properties  # Products database connector config
+├── nginx/
+│   └── nginx.conf                  # Nginx load balancer configuration
+├── monitoring/
+│   ├── prometheus.yml              # Prometheus configuration
+│   ├── alerts/
+│   │   └── alerts.yml              # Alert rules for monitoring
+│   └── grafana/
+│       ├── dashboards/
+│       │   └── sql-chat-agent-dashboard.json  # Grafana dashboard
+│       └── provisioning/
+│           ├── dashboards/
+│           │   └── dashboard.yml   # Dashboard provisioning config
+│           └── datasources/
+│               └── datasource.yml  # Datasource provisioning config
+├── docker-compose.yml              # Docker services orchestration
+├── Dockerfile                      # Application container definition
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variables template
+└── README.md                       # Project documentation
 ```
+### Directory Structure
 
+**app/** - Core application code
+
+**agents/** - LLM and SQL processing logic
+
+**graphs/** - LangGraph workflows for error correction
+
+**services/** - Business logic for memory and suggestions
+
+**static/** - Frontend web interface files
+
+**sql/** - Database initialization scripts
+
+**trino/catalog/** - Trino connector configurations for multi-database access
+
+**nginx/** - Load balancer and reverse proxy configuration
+
+**monitoring/** - Observability stack configurations
+
+**prometheus.yml** - Metrics collection setup
+
+**alerts/** - Alert rules for system monitoring
+
+**grafana/** - Dashboard and provisioning configs
+
+
+
+This structure supports:
+
+1. Horizontal scaling with multiple app instances
+2. Production-grade monitoring and alerting
+3. Multi-database queries through Trino
+4. Async task processing with Celery
+5. Memory-enabled conversations
+6. Load balancing and high availability
 ### Running Tests
 ```bash
 # Run unit tests
