@@ -4,119 +4,309 @@ import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import os
+import logging
+from functools import wraps
+import time
+
+logger = logging.getLogger(__name__)
+
+
+def with_redis_fallback(func):
+    """Decorator to handle Redis connection failures gracefully"""
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except redis.exceptions.ConnectionError as e:
+            logger.error(f"Redis connection error in {func.__name__}: {str(e)}")
+            # Return sensible defaults instead of failing
+            if func.__name__ == 'get_conversation_history':
+                return []
+            elif func.__name__ == 'create_session':
+                return str(uuid.uuid4())
+            elif func.__name__ == 'get_cached_query':
+                return None
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"Unexpected error in {func.__name__}: {str(e)}")
+            raise
+
+    return wrapper
+
 
 class MemoryService:
     def __init__(self):
-        self.redis_client = redis.Redis.from_url(
-            os.getenv("REDIS_URL", "redis://redis:6379/0"),
-            decode_responses=True
-        )
+        self.redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
         self.session_ttl = 3600 * 24  # 24 hours
         self.history_limit = 10  # Keep last 10 conversations
-    
+        self.max_retries = 3
+        self.retry_delay = 1  # seconds
+
+        self._connect_with_retry()
+
+    def _connect_with_retry(self):
+        """Connect to Redis with retry logic"""
+        for attempt in range(self.max_retries):
+            try:
+                self.redis_client = redis.Redis.from_url(
+                    self.redis_url,
+                    decode_responses=True,
+                    socket_timeout=5,
+                    socket_connect_timeout=5,
+                    retry_on_timeout=True,
+                    health_check_interval=30
+                )
+                # Test connection
+                self.redis_client.ping()
+                logger.info("Successfully connected to Redis")
+                return
+            except redis.exceptions.ConnectionError as e:
+                if attempt < self.max_retries - 1:
+                    logger.warning(f"Redis connection attempt {attempt + 1} failed, retrying...")
+                    time.sleep(self.retry_delay * (attempt + 1))
+                else:
+                    logger.error(f"Failed to connect to Redis after {self.max_retries} attempts")
+                    # Create a dummy client that will fail operations gracefully
+                    self.redis_client = None
+
+    @with_redis_fallback
     def create_session(self) -> str:
-        """Create a new session ID"""
+        """Create a new session ID with error handling"""
         session_id = str(uuid.uuid4())
-        self.redis_client.setex(
-            f"session:{session_id}",
-            self.session_ttl,
-            json.dumps({"created_at": datetime.utcnow().isoformat()})
-        )
-        return session_id
-    
+
+        try:
+            session_data = {
+                "created_at": datetime.utcnow().isoformat(),
+                "last_activity": datetime.utcnow().isoformat(),
+                "query_count": 0
+            }
+
+            self.redis_client.setex(
+                f"session:{session_id}",
+                self.session_ttl,
+                json.dumps(session_data)
+            )
+
+            logger.info(f"Created new session: {session_id}")
+            return session_id
+
+        except Exception as e:
+            logger.error(f"Error creating session: {str(e)}")
+            return session_id  # Return the ID even if Redis fails
+
+    @with_redis_fallback
     def add_to_history(self, session_id: str, query: str, answer: str, sql_query: str):
-        """Add a conversation to history"""
-        history_key = f"history:{session_id}"
-        
-        conversation = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "query": query,
-            "answer": answer,
-            "sql_query": sql_query
-        }
-        
-        # Add to Redis list
-        self.redis_client.lpush(history_key, json.dumps(conversation))
-        
-        # Trim to keep only last N conversations
-        self.redis_client.ltrim(history_key, 0, self.history_limit - 1)
-        
-        # Set expiry on the history
-        self.redis_client.expire(history_key, self.session_ttl)
-    
-    def get_conversation_history(self, session_id: str) -> List[Dict[str, Any]]:
-        """Get conversation history for a session"""
-        history_key = f"history:{session_id}"
-        
-        # Check if session exists
-        if not self.redis_client.exists(f"session:{session_id}"):
-            return []
-        
-        # Get history from Redis
-        history_raw = self.redis_client.lrange(history_key, 0, -1)
-        
-        # Parse and reverse to get chronological order
-        history = []
-        for item in reversed(history_raw):
-            try:
-                history.append(json.loads(item))
-            except json.JSONDecodeError:
-                continue
-        
-        return history
-    
-    def get_cached_query(self, session_id: str, query: str) -> Optional[Dict[str, Any]]:
-        """Get cached query result if available"""
-        cache_key = f"query_result:{session_id}:{hash(query)}"
-        
-        cached_result = self.redis_client.get(cache_key)
-        if cached_result:
-            try:
-                return json.loads(cached_result)
-            except json.JSONDecodeError:
-                return None
-        return None
-    
-    def cache_query_result(self, session_id: str, query: str, result: Dict[str, Any], ttl: int = 300):
-        """Cache a query result"""
-        cache_key = f"query_result:{session_id}:{hash(query)}"
-        self.redis_client.setex(
-            cache_key,
-            ttl,
-            json.dumps(result)
-        )
-    
-    def get_session_stats(self, session_id: str) -> Dict[str, Any]:
-        """Get statistics for a session"""
-        history_key = f"history:{session_id}"
-        
-        total_queries = self.redis_client.llen(history_key)
-        
-        # Get session creation time
-        session_data = self.redis_client.get(f"session:{session_id}")
-        if session_data:
-            session_info = json.loads(session_data)
-            created_at = session_info.get("created_at")
-        else:
-            created_at = None
-        
-        return {
-            "session_id": session_id,
-            "total_queries": total_queries,
-            "created_at": created_at,
-            "ttl": self.redis_client.ttl(f"session:{session_id}")
-        }
-    
-    def extend_session(self, session_id: str):
-        """Extend a session's TTL"""
-        session_key = f"session:{session_id}"
-        history_key = f"history:{session_id}"
-        
-        if self.redis_client.exists(session_key):
-            self.redis_client.expire(session_key, self.session_ttl)
+        """Add a conversation to history with error handling"""
+        try:
+            history_key = f"history:{session_id}"
+
+            conversation = {
+                "timestamp": datetime.utcnow().isoformat(),
+                "query": query,
+                "answer": answer,
+                "sql_query": sql_query
+            }
+
+            # Add to Redis list
+            self.redis_client.lpush(history_key, json.dumps(conversation))
+
+            # Trim to keep only last N conversations
+            self.redis_client.ltrim(history_key, 0, self.history_limit - 1)
+
+            # Set expiry on the history
             self.redis_client.expire(history_key, self.session_ttl)
-    
+
+            # Update session info
+            session_key = f"session:{session_id}"
+            if self.redis_client.exists(session_key):
+                session_data = json.loads(self.redis_client.get(session_key))
+                session_data["last_activity"] = datetime.utcnow().isoformat()
+                session_data["query_count"] = session_data.get("query_count", 0) + 1
+                self.redis_client.setex(session_key, self.session_ttl, json.dumps(session_data))
+
+            logger.debug(f"Added conversation to history for session {session_id}")
+
+        except Exception as e:
+            logger.error(f"Error adding to history: {str(e)}")
+
+    @with_redis_fallback
+    def get_conversation_history(self, session_id: str) -> List[Dict[str, Any]]:
+        """Get conversation history with error handling"""
+        try:
+            history_key = f"history:{session_id}"
+
+            # Check if session exists
+            if not self.redis_client.exists(f"session:{session_id}"):
+                logger.warning(f"Session {session_id} does not exist")
+                return []
+
+            # Get history from Redis
+            history_raw = self.redis_client.lrange(history_key, 0, -1)
+
+            # Parse and reverse to get chronological order
+            history = []
+            for item in reversed(history_raw):
+                try:
+                    history.append(json.loads(item))
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse history item: {str(e)}")
+                    continue
+
+            return history
+
+        except Exception as e:
+            logger.error(f"Error getting conversation history: {str(e)}")
+            return []
+
+    @with_redis_fallback
+    def get_cached_query(self, session_id: str, query: str) -> Optional[Dict[str, Any]]:
+        """Get cached query result with error handling"""
+        try:
+            cache_key = f"query_result:{session_id}:{hash(query)}"
+
+            cached_result = self.redis_client.get(cache_key)
+            if cached_result:
+                try:
+                    return json.loads(cached_result)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"Failed to parse cached query: {str(e)}")
+                    return None
+            return None
+
+        except Exception as e:
+            logger.error(f"Error getting cached query: {str(e)}")
+            return None
+
+    @with_redis_fallback
+    def cache_query_result(self, session_id: str, query: str, result: Dict[str, Any], ttl: int = 300):
+        """Cache a query result with error handling"""
+        try:
+            cache_key = f"query_result:{session_id}:{hash(query)}"
+
+            self.redis_client.setex(
+                cache_key,
+                ttl,
+                json.dumps(result)
+            )
+
+            logger.debug(f"Cached query result for session {session_id}")
+
+        except Exception as e:
+            logger.error(f"Error caching query result: {str(e)}")
+
+    @with_redis_fallback
+    def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+        """Get statistics for a session with error handling"""
+        try:
+            history_key = f"history:{session_id}"
+            session_key = f"session:{session_id}"
+
+            total_queries = self.redis_client.llen(history_key)
+
+            # Get session data
+            session_data = None
+            if self.redis_client.exists(session_key):
+                try:
+                    session_data = json.loads(self.redis_client.get(session_key))
+                except json.JSONDecodeError:
+                    session_data = None
+
+            stats = {
+                "session_id": session_id,
+                "total_queries": total_queries,
+                "created_at": session_data.get("created_at") if session_data else None,
+                "last_activity": session_data.get("last_activity") if session_data else None,
+                "ttl": self.redis_client.ttl(session_key)
+            }
+
+            return stats
+
+        except Exception as e:
+            logger.error(f"Error getting session stats: {str(e)}")
+            return {
+                "session_id": session_id,
+                "total_queries": 0,
+                "created_at": None,
+                "last_activity": None,
+                "ttl": -1
+            }
+
+    @with_redis_fallback
+    def extend_session(self, session_id: str):
+        """Extend a session's TTL with error handling"""
+        try:
+            session_key = f"session:{session_id}"
+            history_key = f"history:{session_id}"
+
+            if self.redis_client.exists(session_key):
+                # Update last activity
+                session_data = json.loads(self.redis_client.get(session_key))
+                session_data["last_activity"] = datetime.utcnow().isoformat()
+
+                # Extend TTL
+                self.redis_client.setex(session_key, self.session_ttl, json.dumps(session_data))
+
+                if self.redis_client.exists(history_key):
+                    self.redis_client.expire(history_key, self.session_ttl)
+
+                logger.debug(f"Extended session {session_id}")
+            else:
+                logger.warning(f"Attempted to extend non-existent session {session_id}")
+
+        except Exception as e:
+            logger.error(f"Error extending session: {str(e)}")
+
+    @with_redis_fallback
     def clear_session(self, session_id: str):
-        """Clear a session and its history"""
-        self.redis_client.delete(f"session:{session_id}")
-        self.redis_client.delete(f"history:{session_id}")
+        """Clear a session and its history with error handling"""
+        try:
+            # Delete session and history
+            self.redis_client.delete(f"session:{session_id}")
+            self.redis_client.delete(f"history:{session_id}")
+
+            # Delete any cached queries for this session
+            pattern = f"query_result:{session_id}:*"
+            keys = self.redis_client.keys(pattern)
+            if keys:
+                self.redis_client.delete(*keys)
+
+            logger.info(f"Cleared session {session_id}")
+
+        except Exception as e:
+            logger.error(f"Error clearing session: {str(e)}")
+
+    @with_redis_fallback
+    def cleanup_expired_sessions(self):
+        """Clean up expired sessions (called periodically)"""
+        try:
+            # Find all session keys
+            session_keys = self.redis_client.keys("session:*")
+            cleaned = 0
+
+            for key in session_keys:
+                ttl = self.redis_client.ttl(key)
+                if ttl == -2:  # Key doesn't exist
+                    continue
+                elif ttl == -1:  # No expiry set
+                    # Set expiry for keys without TTL
+                    self.redis_client.expire(key, self.session_ttl)
+                elif ttl <= 0:
+                    # Clean up expired session
+                    session_id = key.split(":", 1)[1]
+                    self.clear_session(session_id)
+                    cleaned += 1
+
+            if cleaned > 0:
+                logger.info(f"Cleaned up {cleaned} expired sessions")
+
+        except Exception as e:
+            logger.error(f"Error during session cleanup: {str(e)}")
+
+    def health_check(self) -> bool:
+        """Check if Redis is healthy"""
+        try:
+            return self.redis_client.ping()
+        except:
+            return False

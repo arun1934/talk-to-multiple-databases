@@ -1,0 +1,268 @@
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Browser[Web Browser]
+    end
+
+    subgraph "Load Balancer Layer"
+        Nginx[Nginx Load Balancer<br/>- SSL Termination<br/>- Rate Limiting<br/>- Caching<br/>- Health Checks]
+    end
+
+    subgraph "Application Layer"
+        App1[FastAPI App 1<br/>- REST API<br/>- Session Management<br/>- Metrics Endpoint]
+        App2[FastAPI App 2<br/>- REST API<br/>- Session Management<br/>- Metrics Endpoint]
+    end
+
+    subgraph "Task Processing Layer"
+        CeleryWorker1[Celery Worker 1<br/>- Query Processing<br/>- SQL Generation<br/>- Error Correction]
+        CeleryWorker2[Celery Worker 2<br/>- Query Processing<br/>- SQL Generation<br/>- Error Correction]
+        CeleryBeat[Celery Beat<br/>- Scheduled Tasks<br/>- Schema Caching<br/>- Session Cleanup]
+        Flower[Flower<br/>- Task Monitoring<br/>- Worker Management]
+    end
+
+    subgraph "Caching Layer"
+        Redis[(Redis Cache<br/>- Session Storage<br/>- Query Results<br/>- Schema Cache<br/>- Celery Broker)]
+    end
+
+    subgraph "Query Engine Layer"
+        Trino[Trino Query Engine<br/>- Multi-database Queries<br/>- Cross-database Joins<br/>- SQL Execution]
+    end
+
+    subgraph "Database Layer"
+        NPSDb[(PostgreSQL<br/>NPS Database<br/>- Feedback Data<br/>- Ratings<br/>- Comments)]
+        ProductsDb[(PostgreSQL<br/>Products Database<br/>- Product Info<br/>- Pricing<br/>- SKUs)]
+    end
+
+    subgraph "AI Layer"
+        OpenAI[OpenAI API<br/>- GPT-4<br/>- NL to SQL<br/>- Error Correction<br/>- Response Generation]
+    end
+
+    subgraph "Monitoring Layer"
+        Prometheus[Prometheus<br/>- Metrics Collection<br/>- Alerting Rules<br/>- Time Series DB]
+        Grafana[Grafana<br/>- Dashboards<br/>- Visualization<br/>- Alert Management]
+    end
+
+    %% Client connections
+    Browser -->|HTTP/HTTPS| Nginx
+
+    %% Load balancer connections
+    Nginx -->|Proxy| App1
+    Nginx -->|Proxy| App2
+
+    %% Application connections
+    App1 -->|Read/Write| Redis
+    App2 -->|Read/Write| Redis
+    App1 -->|Submit Tasks| CeleryWorker1
+    App1 -->|Submit Tasks| CeleryWorker2
+    App2 -->|Submit Tasks| CeleryWorker1
+    App2 -->|Submit Tasks| CeleryWorker2
+
+    %% Celery connections
+    CeleryWorker1 -->|Query| Redis
+    CeleryWorker2 -->|Query| Redis
+    CeleryBeat -->|Schedule| Redis
+    Flower -->|Monitor| Redis
+    CeleryWorker1 -->|API Calls| OpenAI
+    CeleryWorker2 -->|API Calls| OpenAI
+
+    %% Database connections
+    CeleryWorker1 -->|Execute SQL| Trino
+    CeleryWorker2 -->|Execute SQL| Trino
+    Trino -->|Query| NPSDb
+    Trino -->|Query| ProductsDb
+
+    %% Monitoring connections
+    Prometheus -->|Scrape| App1
+    Prometheus -->|Scrape| App2
+    Prometheus -->|Scrape| CeleryWorker1
+    Prometheus -->|Scrape| CeleryWorker2
+    Prometheus -->|Scrape| Flower
+    Prometheus -->|Scrape| Nginx
+    Grafana -->|Query| Prometheus
+
+    %% Styling
+    classDef client fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef lb fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef app fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef worker fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef cache fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef query fill:#ede7f6,stroke:#311b92,stroke-width:2px
+    classDef db fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px
+    classDef ai fill:#fff8e1,stroke:#ff6f00,stroke-width:2px
+    classDef monitor fill:#efebe9,stroke:#3e2723,stroke-width:2px
+
+    class Browser client
+    class Nginx lb
+    class App1,App2 app
+    class CeleryWorker1,CeleryWorker2,CeleryBeat,Flower worker
+    class Redis cache
+    class Trino query
+    class NPSDb,ProductsDb db
+    class OpenAI ai
+    class Prometheus,Grafana monitor
+```
+
+## Data Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Nginx
+    participant FastAPI
+    participant Redis
+    participant Celery
+    participant OpenAI
+    participant Trino
+    participant PostgreSQL
+    participant Prometheus
+
+    User->>Nginx: Natural language query
+    Nginx->>FastAPI: Route request
+    FastAPI->>Redis: Check cache
+
+    alt Cache hit
+        Redis-->>FastAPI: Return cached result
+        FastAPI-->>User: Return response
+    else Cache miss
+        FastAPI->>Celery: Submit query task
+        Celery->>OpenAI: Convert NL to SQL
+        OpenAI-->>Celery: SQL query
+        Celery->>Trino: Execute SQL
+        Trino->>PostgreSQL: Query data
+        PostgreSQL-->>Trino: Return results
+        Trino-->>Celery: Query results
+        Celery->>OpenAI: Generate response
+        OpenAI-->>Celery: Natural language response
+        Celery->>Redis: Cache results
+        Celery-->>FastAPI: Return results
+        FastAPI-->>User: Return response
+    end
+
+    FastAPI->>Prometheus: Export metrics
+    Prometheus->>FastAPI: Scrape metrics
+```
+
+## Component Interaction Diagram
+
+```mermaid
+flowchart LR
+    subgraph "Frontend"
+        UI[Web UI<br/>Chat Interface]
+    end
+
+    subgraph "API Gateway"
+        LB[Nginx<br/>Load Balancer]
+    end
+
+    subgraph "Application Tier"
+        API1[FastAPI Instance 1]
+        API2[FastAPI Instance 2]
+    end
+
+    subgraph "Processing Tier"
+        W1[Celery Worker 1]
+        W2[Celery Worker 2]
+        B[Celery Beat]
+    end
+
+    subgraph "Data Tier"
+        R[(Redis)]
+        T[Trino]
+        P1[(PostgreSQL<br/>NPS)]
+        P2[(PostgreSQL<br/>Products)]
+    end
+
+    subgraph "External Services"
+        AI[OpenAI API]
+    end
+
+    subgraph "Monitoring"
+        PR[Prometheus]
+        GR[Grafana]
+    end
+
+    UI --> LB
+    LB --> API1
+    LB --> API2
+    API1 --> R
+    API2 --> R
+    API1 --> W1
+    API1 --> W2
+    API2 --> W1
+    API2 --> W2
+    W1 --> AI
+    W2 --> AI
+    W1 --> T
+    W2 --> T
+    T --> P1
+    T --> P2
+    B --> R
+    PR --> API1
+    PR --> API2
+    PR --> W1
+    PR --> W2
+    GR --> PR
+```
+
+## Deployment Architecture
+
+```mermaid
+graph TB
+    subgraph "Docker Network"
+        subgraph "Frontend Services"
+            N[Nginx Container<br/>Port 80, 443]
+        end
+
+        subgraph "Application Services"
+            A1[App Container 1<br/>Port 8000]
+            A2[App Container 2<br/>Port 8000]
+        end
+
+        subgraph "Worker Services"
+            W1[Worker Container 1]
+            W2[Worker Container 2]
+            B[Beat Container]
+            F[Flower Container<br/>Port 5555]
+        end
+
+        subgraph "Data Services"
+            R[Redis Container<br/>Port 6379]
+            T[Trino Container<br/>Port 8080]
+            P1[PostgreSQL NPS<br/>Port 5432]
+            P2[PostgreSQL Products<br/>Port 5432]
+        end
+
+        subgraph "Monitoring Services"
+            PR[Prometheus Container<br/>Port 9090]
+            GR[Grafana Container<br/>Port 3000]
+        end
+    end
+
+    subgraph "External Services"
+        O[OpenAI API]
+    end
+
+    subgraph "Persistent Storage"
+        V1[(Redis Volume)]
+        V2[(PostgreSQL NPS Volume)]
+        V3[(PostgreSQL Products Volume)]
+        V4[(Prometheus Volume)]
+        V5[(Grafana Volume)]
+    end
+
+    N --> A1
+    N --> A2
+    A1 --> R
+    A2 --> R
+    W1 --> O
+    W2 --> O
+    W1 --> T
+    W2 --> T
+    T --> P1
+    T --> P2
+    R --> V1
+    P1 --> V2
+    P2 --> V3
+    PR --> V4
+    GR --> V5
+```

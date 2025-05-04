@@ -1,11 +1,27 @@
 version: '3.8'
 
 services:
-  app:
-    build: .
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
     ports:
-      - "8000:8000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app1
+      - app2
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Application instances
+  app1:
+    build: .
     environment:
+      - INSTANCE_ID=1
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
@@ -16,20 +32,30 @@ services:
       - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
       - PYTHONPATH=/app
     depends_on:
-      - redis
-      - postgres-nps
-      - postgres-products
-      - trino
+      redis:
+        condition: service_healthy
+      postgres-nps:
+        condition: service_healthy
+      postgres-products:
+        condition: service_healthy
+      trino:
+        condition: service_healthy
     volumes:
       - ./app:/app/app
       - ./static:/app/static
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
 
-  celery-worker:
+  app2:
     build: .
-    command: celery -A app.tasks.celery_app worker --loglevel=info
     environment:
+      - INSTANCE_ID=2
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
@@ -40,15 +66,105 @@ services:
       - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
       - PYTHONPATH=/app
     depends_on:
-      - redis
-      - postgres-nps
-      - postgres-products
-      - trino
+      redis:
+        condition: service_healthy
+      postgres-nps:
+        condition: service_healthy
+      postgres-products:
+        condition: service_healthy
+      trino:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./static:/app/static
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Celery workers
+  celery-worker1:
+    build: .
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4 -n worker1@%h
+    environment:
+      - CELERY_WORKER_ID=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - TRINO_URL=http://trino:8080
+      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
+      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
+      - PYTHONPATH=/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres-nps:
+        condition: service_healthy
+      postgres-products:
+        condition: service_healthy
+      trino:
+        condition: service_healthy
     volumes:
       - ./app:/app/app
     networks:
       - app-network
+    restart: unless-stopped
 
+  celery-worker2:
+    build: .
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4 -n worker2@%h
+    environment:
+      - CELERY_WORKER_ID=2
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - TRINO_URL=http://trino:8080
+      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
+      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
+      - PYTHONPATH=/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres-nps:
+        condition: service_healthy
+      postgres-products:
+        condition: service_healthy
+      trino:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Celery beat scheduler
+  celery-beat:
+    build: .
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+    volumes:
+      - ./app:/app/app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Flower monitoring
   flower:
     build: .
     command: celery -A app.tasks.celery_app flower --port=5555
@@ -60,16 +176,20 @@ services:
       - PYTHONPATH=/app
     depends_on:
       - redis
-      - celery-worker
+      - celery-worker1
+      - celery-worker2
     networks:
       - app-network
+    restart: unless-stopped
 
+  # Redis with persistence
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes
     networks:
       - app-network
     healthcheck:
@@ -77,7 +197,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # PostgreSQL for NPS data
   postgres-nps:
     image: postgres:15-alpine
     environment:
@@ -94,7 +216,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # PostgreSQL for Products data
   postgres-products:
     image: postgres:15-alpine
     environment:
@@ -111,7 +235,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+  # Trino
   trino:
     image: trinodb/trino:433
     ports:
@@ -130,11 +256,49 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  # Prometheus monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      # Create empty directories to prevent warnings
+      - /dev/null:/etc/grafana/provisioning/plugins/.gitkeep
+      - /dev/null:/etc/grafana/provisioning/alerting/.gitkeep
+    environment:
+        - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    depends_on:
+      - prometheus
+    networks:
+      - app-network
+    restart: unless-stopped
 
 volumes:
   postgres_nps_data:
   postgres_products_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   app-network:
