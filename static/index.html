@@ -587,26 +587,9 @@
         </div>
 
                 <div id="chat-container">
-            <div id="chat-log">
-                <!-- Welcome message -->
-                <div class="message-row agent">
-                    <div class="avatar">AI</div>
-                    <div class="message-content">
-                        <div class="bubble">
-                            <strong>Hello! I'm your SQL assistant.</strong>
-
-                            Ask me questions about your NPS database in natural language, and I'll help you query and analyze your data.
-
-                            <strong>Available tables:</strong>
-                            • NPS Feedback Table
-                            • Products Table
-
-                            Feel free to ask anything about your data!
-                        </div>
+                    <div id="chat-log">
+                        <!-- Welcome message will be added by JavaScript -->
                     </div>
-                </div>
-            </div>
-
             <div id="spinner" style="display: none;">
                 <span></span>
                 <span></span>
@@ -655,17 +638,15 @@
         let db = null;
         let currentConversationId = null;
         let conversations = [];
-        const WELCOME_MESSAGE = `
-        **Hello! I'm your SQL assistant.**
+        const WELCOME_MESSAGE = `**Hello! I'm your SQL assistant.**
 
         Ask me questions about your NPS database in natural language, and I'll help you query and analyze your data.
 
         **Available tables:**
-        • NPS Feedback Table
-        • Products Table
+        - NPS Feedback Table
+        - Products Table
 
-        Feel free to ask anything about your data!
-        `;
+        Feel free to ask anything about your data!`;
         // Storage adapter
         let storageAdapter = null;
 
@@ -820,6 +801,11 @@
 
                     if (conversations.length === 0) {
                         await createNewConversation();
+                        // Show welcome message
+                        const chatLog = document.getElementById('chat-log');
+                        chatLog.innerHTML = '';
+                        const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
+                        chatLog.appendChild(welcomeMsg);
                     } else {
                         await loadConversation(conversations[0].id);
                     }
@@ -938,7 +924,9 @@
                     deleteBtn.innerHTML = '×';
                     deleteBtn.onclick = (e) => {
                         e.stopPropagation();
-                        deleteConversationHandler(conv.id);
+                            if (confirm('Are you sure you want to delete this conversation?')) {
+                                deleteConversationHandler(conv.id);
+                            }
                     };
                     item.appendChild(deleteBtn);
 
@@ -1085,6 +1073,7 @@
 
 
         // Create message element
+        // Create message element
         function createMessageElement(role, content) {
             const messageRow = document.createElement('div');
             messageRow.className = `message-row ${role}`;
@@ -1092,48 +1081,31 @@
             // Format content with bold and line breaks
             let formattedContent = content;
             if (role === 'agent') {
+                // First trim any excess whitespace from the content
+                formattedContent = content.trim();
+
                 // Replace **text** with <strong>text</strong> for bold
-                formattedContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
-                // Handle bullet points and numbered lists properly
+                // Split by newlines and process each line
                 const lines = formattedContent.split('\n');
-                const processedLines = [];
+                const processedLines = lines.map(line => {
+                    let processedLine = line.trim();
 
-                for (let i = 0; i < lines.length; i++) {
-                    let line = lines[i];
-
-                    // Skip empty lines but preserve as break
-                    if (!line.trim()) {
-                        processedLines.push('<br>');
-                        continue;
+                    // Convert bullet points (both - and •) to HTML entities
+                    if (processedLine.startsWith('- ')) {
+                        processedLine = '&bull; ' + processedLine.substring(2);
+                    } else if (processedLine.startsWith('• ')) {
+                        processedLine = '&bull; ' + processedLine.substring(2);
                     }
 
-                    // Special handling for bullet points and lists
-                    if (line.trim().startsWith('• ') || line.trim().startsWith('- ') || /^\d+\.\s/.test(line.trim())) {
-                        // If this is a list item, ensure proper spacing
-                        if (i > 0 && !lines[i-1].trim().startsWith('• ') &&
-                            !lines[i-1].trim().startsWith('- ') &&
-                            !/^\d+\.\s/.test(lines[i-1].trim()) &&
-                            lines[i-1].trim() !== '') {
-                            processedLines.push('<br>');
-                        }
+                    return processedLine;
+                });
 
-                        // Convert bullet points to HTML entities
-                        if (line.includes('• ')) {
-                            line = line.replace(/• /g, '&bull; ');
-                        }
-
-                        processedLines.push(line);
-                    } else {
-                        processedLines.push(line);
-                    }
-                }
-
-                // Join all processed lines with breaks
-                formattedContent = processedLines.join('<br>');
-
-                // Clean up multiple consecutive breaks
-                formattedContent = formattedContent.replace(/(<br>){3,}/g, '<br><br>');
+                // Join with line breaks, but don't add breaks for empty lines
+                formattedContent = processedLines
+                    .filter(line => line.length > 0)
+                    .join('<br>');
             }
 
             messageRow.innerHTML = `
@@ -1381,6 +1353,12 @@
                 sendMessage();
             });
 
+            // Show welcome message immediately
+            const chatLog = document.getElementById('chat-log');
+            if (chatLog.children.length === 0) {
+                const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
+                chatLog.appendChild(welcomeMsg);
+            }
             // Load schema
             fetch('/api/schema')
                 .then(response => {
