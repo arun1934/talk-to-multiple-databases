@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetScore Gradient Animation</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f5f5f5;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .login-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 360px;
+        }
+
+        .netscore-text {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .description {
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .small-text {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .login-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            padding: 10px 20px;
+            border: 1px solid #ccc;
+            border-radius: 50px;
+            background-color: white;
+            color: #333;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            width: fit-content;
+        }
+
+        .login-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        .login-btn img {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1 class="netscore-text" id="netscoreText">NetScore</h1>
+        <p class="description">Access your NPS analytics dashboard.</p>
+        <p class="small-text">(Microsoft Azure AD login required)</p>
+        <form action="/login" method="get">
+        <button class="login-btn">
+            <svg width="20" height="20" viewBox="0 0 48 48">
+                <path fill="#f25022" d="M12,12h10v10H12V12z"/>
+                <path fill="#00a4ef" d="M12,24h10v10H12V24z"/>
+                <path fill="#7fba00" d="M24,12h10v10H24V12z"/>
+                <path fill="#ffb900" d="M24,24h10v10H24V24z"/>
+            </svg>
+            Sign in with Microsoft
+        </button>
+        </form>
+    
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const textElement = document.getElementById('netscoreText');
+            
+            // Define gradient colors - orange-gold theme
+            const gradientColors = [
+                // Orange to gold shades
+                { r: 255, g: 165, b: 0 },    // Orange
+                { r: 255, g: 215, b: 0 },    // Gold
+                { r: 255, g: 140, b: 0 },    // Dark Orange
+                { r: 255, g: 193, b: 7 },    // Amber
+                { r: 255, g: 165, b: 0 }     // Back to orange for smooth cycle
+            ];
+            
+            let currentColorIndex = 0;
+            let nextColorIndex = 1;
+            let colorStep = 0;
+            const colorStepMax = 100;
+            
+            function animateGradient() {
+                if (colorStep >= colorStepMax) {
+                    // Move to next color pair
+                    currentColorIndex = nextColorIndex;
+                    nextColorIndex = (nextColorIndex + 1) % gradientColors.length;
+                    colorStep = 0;
+                }
+                
+                const currentColor = gradientColors[currentColorIndex];
+                const nextColor = gradientColors[nextColorIndex];
+                
+                // Calculate interpolated color
+                const ratio = colorStep / colorStepMax;
+                const r = Math.round(currentColor.r + (nextColor.r - currentColor.r) * ratio);
+                const g = Math.round(currentColor.g + (nextColor.g - currentColor.g) * ratio);
+                const b = Math.round(currentColor.b + (nextColor.b - currentColor.b) * ratio);
+                
+                // Create gradient with interpolated color
+                const gradient = `linear-gradient(45deg, rgb(${r}, ${g}, ${b}), rgb(${r-30}, ${g-20}, ${b}))`;
+                textElement.style.backgroundImage = gradient;
+                
+                colorStep += 1; // Speed of color transition
+                
+                requestAnimationFrame(animateGradient);
+            }
+            
+            // Start the animation
+            animateGradient();
+        });
+    </script>
+</body>
+</html>

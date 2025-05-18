@@ -1,0 +1,52 @@
+graph TD
+    subgraph "Main System Flow"
+        A[User Question] -->|API Request| B[FastAPI Endpoint]
+        B -->|Submit Task| C[Celery Worker]
+        C -->|Process Query| D[SQL Agent]
+        D -->|Check Cache| E{In Cache?}
+        E -->|Yes| F[Retrieve Cached Result]
+        E -->|No| G[Choose Relevant Tables]
+        G -->|Get Table Definitions| H[Generate SQL Query]
+        H -->|Execute| I[Database]
+        I -->|Format Results| J[Natural Language Response]
+        J -->|Cache Results| K[Redis Cache]
+        K --> F
+        F -->|Generate Suggestions| L[Follow-up Questions]
+        L --> M[Return Complete Result]
+    end
+
+    subgraph "SQL Agent Process"
+        AA[Question Input] --> BB[Load Conversation Memory]
+        BB --> CC{Check Cache}
+        CC -->|Cache Hit| DD[Return Cached Result]
+        CC -->|Cache Miss| EE[Create StateGraph]
+        EE --> FF[Choose Tables Node]
+        FF --> GG[Get DDLs Node]
+        GG --> HH[Generate SQL Node]
+        HH --> II[Execute SQL Node]
+        II -->|Error| JJ[Correct SQL]
+        JJ --> II
+        II -->|Success| KK[Format Results]
+        KK --> LL[Suggest Followups]
+        LL --> MM[Save to Memory]
+        MM --> NN[Cache Response]
+        NN --> OO[Return Result]
+    end
+
+    subgraph "LLM Integration"
+        AAA[User Prompt] --> BBB[Format Messages]
+        BBB --> CCC[Apply Temperature]
+        CCC --> DDD[Send to LiteLLM]
+        DDD --> EEE[Process Response]
+        EEE --> FFF[Return Content]
+    end
+
+    subgraph "Visualization Flow"
+        AAAA[Query Results] --> BBBB[Send to LLM]
+        BBBB --> CCCC[Analyze Data Pattern]
+        CCCC --> DDDD{Suitable for Visualization?}
+        DDDD -->|Yes| EEEE[Determine Chart Type]
+        DDDD -->|No| FFFF[Recommend No Visualization]
+        EEEE --> GGGG[Return Recommendation]
+        FFFF --> GGGG
+    end

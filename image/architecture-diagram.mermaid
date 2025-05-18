@@ -1,0 +1,39 @@
+graph TD
+    subgraph Client
+        UI[User Interface] --> API[API Layer]
+    end
+    
+    subgraph "API Layer"
+        API --> TaskQueue[Task Queue]
+        API --> Vis[Visualization API]
+    end
+    
+    subgraph "Task Processing"
+        TaskQueue --> CeleryWorker[Celery Worker]
+        TaskQueue --> ComplexWorker[Complex Query Worker]
+        TaskQueue --> SimpleWorker[Simple Query Worker]
+        CeleryWorker --> SQLAgent
+        ComplexWorker --> SQLAgent
+        SimpleWorker --> SQLAgent
+    end
+    
+    subgraph "Core Components"
+        SQLAgent --> LLMService[LLM Service]
+        SQLAgent --> Database[(PostgreSQL Database)]
+        SQLAgent --> Cache[(Redis Cache)]
+        SQLAgent -.-> Memory[Conversation Memory]
+    end
+    
+    subgraph "Monitoring"
+        Metrics[Metrics Collection] --> Prometheus
+        Prometheus --> Grafana[Grafana Dashboards]
+        CeleryWorker --> Flower[Flower Monitor]
+    end
+    
+    LLMService --> CircuitBreaker[Circuit Breaker]
+    LLMService --> RateLimiter[Rate Limiter]
+    
+    style LLMService fill:#f9f,stroke:#333,stroke-width:2px
+    style Database fill:#bef,stroke:#333,stroke-width:2px
+    style Cache fill:#bef,stroke:#333,stroke-width:2px
+    style SQLAgent fill:#fdb,stroke:#333,stroke-width:2px

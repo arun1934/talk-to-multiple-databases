@@ -1,0 +1,59 @@
+flowchart TD
+    subgraph "Frontend/Client"
+        UI[User Interface]
+    end
+
+    subgraph "API Layer"
+        API[FastAPI Application]
+        Router[API Routers]
+        Auth[Authentication]
+    end
+
+    subgraph "Task Processing"
+        Celery[Celery Worker]
+        Queue[Task Queue]
+    end
+
+    subgraph "Data Processing"
+        Agent[SQL Agent]
+        LLM[LiteLLM Integration]
+        Memory[Conversation Memory]
+    end
+
+    subgraph "Storage"
+        Redis[Redis Cache]
+        PSQL[PostgreSQL Database]
+    end
+
+    subgraph "Configuration"
+        ENV[Environment Variables]
+        Settings[Settings Module]
+        LLMConfig[LLM Configuration]
+    end
+
+    UI -->|HTTP Request| API
+    API --> Router
+    Router -->|Submit Task| Queue
+    Queue --> Celery
+    Celery --> Agent
+    Agent --> Memory
+    Agent -->|Generate SQL| LLM
+    Agent -->|Execute Query| PSQL
+    Agent -->|Cache Results| Redis
+    LLM -->|API Call| External[LiteLLM API]
+    Memory -->|Store/Retrieve| Redis
+    
+    ENV --> Settings
+    Settings --> API
+    Settings --> LLMConfig
+    LLMConfig --> LLM
+    
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef storage fill:#bfb,stroke:#333,stroke-width:1px;
+    classDef config fill:#fbb,stroke:#333,stroke-width:1px;
+    
+    class API,Agent primary;
+    class Router,Celery,LLM,Memory,Queue secondary;
+    class Redis,PSQL storage;
+    class ENV,Settings,LLMConfig config;

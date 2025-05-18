@@ -1,0 +1,199 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Define gradients and shadows -->
+  <defs>
+    <linearGradient id="clientGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bbdefb;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="nginxGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff3e0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffe0b2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="appGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f3e5f5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e1bee7;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="workerGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8f5e9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c8e6c9;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="cacheGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fce4ec;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8bbd0;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="dbGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bbdefb;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff8e1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffecb3;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="monitorGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#efebe9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d7ccc8;stop-opacity:1" />
+    </linearGradient>
+    
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Client Layer -->
+  <g transform="translate(550, 30)">
+    <rect x="-60" y="-20" width="120" height="60" rx="8" fill="url(#clientGradient)" stroke="#0d47a1" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Web Browser</text>
+  </g>
+
+  <!-- Load Balancer Layer -->
+  <g transform="translate(550, 130)">
+    <rect x="-100" y="-35" width="200" height="90" rx="8" fill="url(#nginxGradient)" stroke="#e65100" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="-15" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Nginx Load Balancer</text>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="11">• SSL Termination</text>
+    <text x="0" y="20" text-anchor="middle" font-family="Arial" font-size="11">• Rate Limiting</text>
+    <text x="0" y="35" text-anchor="middle" font-family="Arial" font-size="11">• Health Checks</text>
+  </g>
+
+  <!-- Application Layer -->
+  <g transform="translate(400, 250)">
+    <rect x="-70" y="-25" width="140" height="50" rx="8" fill="url(#appGradient)" stroke="#4a148c" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">FastAPI App 1</text>
+  </g>
+  
+  <g transform="translate(700, 250)">
+    <rect x="-70" y="-25" width="140" height="50" rx="8" fill="url(#appGradient)" stroke="#4a148c" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">FastAPI App 2</text>
+  </g>
+
+  <!-- Cache Layer -->
+  <g transform="translate(550, 370)">
+    <rect x="-70" y="-25" width="140" height="50" rx="8" fill="url(#cacheGradient)" stroke="#880e4f" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Redis Cache</text>
+  </g>
+
+  <!-- Task Processing Layer -->
+  <g transform="translate(200, 370)">
+    <rect x="-80" y="-25" width="160" height="50" rx="8" fill="url(#workerGradient)" stroke="#1b5e20" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Celery Worker 1</text>
+  </g>
+  
+  <g transform="translate(900, 370)">
+    <rect x="-80" y="-25" width="160" height="50" rx="8" fill="url(#workerGradient)" stroke="#1b5e20" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Celery Worker 2</text>
+  </g>
+  
+  <g transform="translate(200, 450)">
+    <rect x="-70" y="-25" width="140" height="50" rx="8" fill="url(#workerGradient)" stroke="#1b5e20" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Celery Beat</text>
+  </g>
+  
+  <g transform="translate(900, 450)">
+    <rect x="-80" y="-25" width="160" height="50" rx="8" fill="url(#workerGradient)" stroke="#1b5e20" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Flower Dashboard</text>
+  </g>
+
+  <!-- Query Engine Layer -->
+  <g transform="translate(550, 500)">
+    <rect x="-100" y="-25" width="200" height="50" rx="8" fill="url(#dbGradient)" stroke="#311b92" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Trino Query Engine</text>
+  </g>
+
+  <!-- Database Layer -->
+  <g transform="translate(400, 620)">
+    <rect x="-80" y="-25" width="160" height="50" rx="8" fill="url(#dbGradient)" stroke="#0d47a1" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">PostgreSQL NPS</text>
+  </g>
+  
+  <g transform="translate(700, 620)">
+    <rect x="-80" y="-25" width="160" height="50" rx="8" fill="url(#dbGradient)" stroke="#0d47a1" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">PostgreSQL Products</text>
+  </g>
+
+  <!-- AI Layer -->
+  <g transform="translate(50, 500)">
+    <rect x="-70" y="-25" width="140" height="50" rx="8" fill="url(#aiGradient)" stroke="#ff6f00" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">OpenAI GPT-4</text>
+  </g>
+
+  <!-- Monitoring Layer -->
+  <g transform="translate(1000, 200)">
+    <rect x="-60" y="-25" width="120" height="50" rx="8" fill="url(#monitorGradient)" stroke="#3e2723" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Prometheus</text>
+  </g>
+  
+  <g transform="translate(1000, 100)">
+    <rect x="-60" y="-25" width="120" height="50" rx="8" fill="url(#monitorGradient)" stroke="#3e2723" stroke-width="2" filter="url(#shadow)"/>
+    <text x="0" y="5" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold">Grafana</text>
+  </g>
+
+  <!-- Connections -->
+  <!-- Browser to Nginx -->
+  <path d="M 550 60 L 550 95" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Nginx to Apps -->
+  <path d="M 500 175 L 440 225" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 600 175 L 660 225" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Apps to Redis -->
+  <path d="M 400 275 L 480 345" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 700 275 L 620 345" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Apps to Workers -->
+  <path d="M 350 275 L 250 345" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 750 275 L 850 345" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Workers to OpenAI -->
+  <path d="M 150 395 L 80 475" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 850 395 L 100 475" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrowhead)"/>
+  
+  <!-- Workers to Trino -->
+  <path d="M 250 395 L 450 475" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 850 395 L 650 475" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Trino to Databases -->
+  <path d="M 500 525 L 440 595" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <path d="M 600 525 L 660 595" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Prometheus to Components -->
+  <path d="M 940 200 L 460 250" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <path d="M 940 200 L 760 250" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <path d="M 940 200 L 280 370" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  <path d="M 990 200 L 920 370" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+  
+  <!-- Grafana to Prometheus -->
+  <path d="M 1000 125 L 1000 175" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto" fill="#666">
+      <polygon points="0 0, 10 3.5, 0 7"/>
+    </marker>
+  </defs>
+
+  <!-- Legend -->
+  <g transform="translate(50, 700)">
+    <text x="0" y="0" font-family="Arial" font-size="16" font-weight="bold">Architecture Legend:</text>
+    <g transform="translate(0, 20)">
+      <line x1="0" y1="10" x2="40" y2="10" stroke="#666" stroke-width="2"/>
+      <text x="50" y="15" font-family="Arial" font-size="12">Data Flow</text>
+    </g>
+    <g transform="translate(150, 20)">
+      <line x1="0" y1="10" x2="40" y2="10" stroke="#666" stroke-width="2" stroke-dasharray="3,3"/>
+      <text x="50" y="15" font-family="Arial" font-size="12">Monitoring</text>
+    </g>
+    <g transform="translate(300, 20)">
+      <line x1="0" y1="10" x2="40" y2="10" stroke="#666" stroke-width="2" stroke-dasharray="5,5"/>
+      <text x="50" y="15" font-family="Arial" font-size="12">Cross-Service Communication</text>
+    </g>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="30" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold">SQL Chat Agent Architecture</text>
+</svg>
