@@ -37,24 +37,30 @@ scrape_configs:
           service: 'celery'
 
   # Scrape Redis
+#  - job_name: 'redis'
+#    static_configs:
+#      - targets: ['redis:6379']
+#        labels:
+#          service: 'redis'
+# Scrape Redis via exporter
   - job_name: 'redis'
     static_configs:
-      - targets: ['redis:6379']
+      - targets: ['redis-exporter:9121']
         labels:
           service: 'redis'
 
   # Scrape PostgreSQL (using postgres_exporter)
-  - job_name: 'postgres'
-    static_configs:
-      - targets: 
-          - 'postgres-nps:5432'
-          - 'postgres-products:5432'
-        labels:
-          service: 'postgres'
+#  - job_name: 'postgres'
+#    static_configs:
+#      - targets:
+#          - 'postgres-nps:5432'
+#          - 'postgres-products:5432'
+#        labels:
+#          service: 'postgres'
 
   # Scrape Nginx (if nginx-prometheus-exporter is set up)
-  - job_name: 'nginx'
-    static_configs:
-      - targets: ['nginx:9113']
-        labels:
-          service: 'nginx'
+#  - job_name: 'nginx'
+#    static_configs:
+#      - targets: ['nginx:9113']
+#        labels:
+#          service: 'nginx'

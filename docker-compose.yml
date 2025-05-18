@@ -1,78 +1,59 @@
 version: '3.8'
 
 services:
-  # Nginx Load Balancer
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - app1
-      - app2
-    networks:
-      - app-network
-    restart: unless-stopped
-
   # Application instances
   app1:
     build: .
+    ports:
+      - "8003:8000"
     environment:
       - INSTANCE_ID=1
+      # Database URLs - specific PostgreSQL URLs for each database
+      - DATABASE_URL_NPS=${DATABASE_URL_NPS:-postgresql://postgres:admin@host.docker.internal/nps_db}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-20}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-30}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-30}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-300}
+      # LiteLLM settings
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - LITELLM_API_BASE=${LITELLM_API_BASE}
+      - LITELLM_AUTH_HEADER=${LITELLM_AUTH_HEADER}
+      - LITELLM_MODEL=${LITELLM_MODEL:-gpt-4.1-mini}
+      # LLM temperature settings
+      - GENERATION_TEMPERATURE=${GENERATION_TEMPERATURE:-0.0}
+      - SUMMARY_TEMPERATURE=${SUMMARY_TEMPERATURE:-0.3}
+      - SUGGESTION_TEMPERATURE=${SUGGESTION_TEMPERATURE:-0.5}
+      # Redis settings
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - USE_REDIS_CLUSTER=${USE_REDIS_CLUSTER:-false}
+      # Celery settings
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-      - TRINO_URL=http://trino:8080
-      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
-      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
+      - TASK_TIME_LIMIT=${TASK_TIME_LIMIT:-60}
+      - TASK_SOFT_TIME_LIMIT=${TASK_SOFT_TIME_LIMIT:-50}
+      - WORKER_PREFETCH_MULTIPLIER=${WORKER_PREFETCH_MULTIPLIER:-1}
+      - WORKER_MAX_TASKS_PER_CHILD=${WORKER_MAX_TASKS_PER_CHILD:-1000}
+      - WORKER_MAX_MEMORY_PER_CHILD=${WORKER_MAX_MEMORY_PER_CHILD:-200000}
+      # Cache settings
+      - ENABLE_LLM_CACHE=${ENABLE_LLM_CACHE:-true}
+      - LLM_CACHE_TTL=${LLM_CACHE_TTL:-300}
+      - QUERY_CACHE_TTL=${QUERY_CACHE_TTL:-300}
+      - SCHEMA_CACHE_TTL=${SCHEMA_CACHE_TTL:-3600}
+      # API settings
+      - API_RATE_LIMIT=${API_RATE_LIMIT:-30}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      # Memory settings
+      - SESSION_TTL=${SESSION_TTL:-86400}
+      - HISTORY_LIMIT=${HISTORY_LIMIT:-10}
+      - REDIS_RETRY_DELAY=${REDIS_RETRY_DELAY:-1}
+      - REDIS_MAX_RETRIES=${REDIS_MAX_RETRIES:-3}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PYTHONPATH=/app
     depends_on:
       redis:
-        condition: service_healthy
-      postgres-nps:
-        condition: service_healthy
-      postgres-products:
-        condition: service_healthy
-      trino:
-        condition: service_healthy
-    volumes:
-      - ./app:/app/app
-      - ./static:/app/static
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-
-  app2:
-    build: .
-    environment:
-      - INSTANCE_ID=2
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-      - TRINO_URL=http://trino:8080
-      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
-      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
-      - PYTHONPATH=/app
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres-nps:
-        condition: service_healthy
-      postgres-products:
-        condition: service_healthy
-      trino:
         condition: service_healthy
     volumes:
       - ./app:/app/app
@@ -92,52 +73,34 @@ services:
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4 -n worker1@%h
     environment:
       - CELERY_WORKER_ID=1
+      # Database URLs - specific PostgreSQL URLs for each database
+      - DATABASE_URL_NPS=${DATABASE_URL_NPS:-postgresql://postgres:admin@host.docker.internal/nps_db}
+      # LiteLLM settings
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - LITELLM_API_BASE=${LITELLM_API_BASE}
+      - LITELLM_AUTH_HEADER=${LITELLM_AUTH_HEADER}
+      - LITELLM_MODEL=${LITELLM_MODEL:-gpt-4.1-mini}
+      # LLM temperature settings
+      - GENERATION_TEMPERATURE=${GENERATION_TEMPERATURE:-0.0}
+      - SUMMARY_TEMPERATURE=${SUMMARY_TEMPERATURE:-0.3}
+      - SUGGESTION_TEMPERATURE=${SUGGESTION_TEMPERATURE:-0.5}
+      # Redis settings
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      # Celery settings
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-      - TRINO_URL=http://trino:8080
-      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
-      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
+      - TASK_TIME_LIMIT=${TASK_TIME_LIMIT:-60}
+      - TASK_SOFT_TIME_LIMIT=${TASK_SOFT_TIME_LIMIT:-50}
+      # Cache settings
+      - ENABLE_LLM_CACHE=${ENABLE_LLM_CACHE:-true}
+      - LLM_CACHE_TTL=${LLM_CACHE_TTL:-300}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PYTHONPATH=/app
     depends_on:
       redis:
-        condition: service_healthy
-      postgres-nps:
-        condition: service_healthy
-      postgres-products:
-        condition: service_healthy
-      trino:
-        condition: service_healthy
-    volumes:
-      - ./app:/app/app
-    networks:
-      - app-network
-    restart: unless-stopped
-
-  celery-worker2:
-    build: .
-    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4 -n worker2@%h
-    environment:
-      - CELERY_WORKER_ID=2
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
-      - TRINO_URL=http://trino:8080
-      - DATABASE_URL_NPS=postgresql://postgres:postgres@postgres-nps:5432/nps_db
-      - DATABASE_URL_PRODUCTS=postgresql://postgres:postgres@postgres-products:5432/products_db
-      - PYTHONPATH=/app
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres-nps:
-        condition: service_healthy
-      postgres-products:
-        condition: service_healthy
-      trino:
         condition: service_healthy
     volumes:
       - ./app:/app/app
@@ -150,11 +113,22 @@ services:
     build: .
     command: celery -A app.tasks.celery_app beat --loglevel=info
     environment:
+      # Database URLs - specific PostgreSQL URLs for each database
+      - DATABASE_URL_NPS=${DATABASE_URL_NPS:-postgresql://postgres:admin@host.docker.internal/nps_db}
+      # LiteLLM settings
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - LITELLM_API_BASE=${LITELLM_API_BASE}
+      - LITELLM_AUTH_HEADER=${LITELLM_AUTH_HEADER}
+      - LITELLM_MODEL=${LITELLM_MODEL:-gpt-4.1-mini}
+      # Redis settings
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      # Celery settings
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      # Cache settings
+      - SCHEMA_CACHE_TTL=${SCHEMA_CACHE_TTL:-3600}
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - PYTHONPATH=/app
     depends_on:
       - redis
@@ -173,11 +147,17 @@ services:
     environment:
       - CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://redis:6379/1}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND:-redis://redis:6379/2}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FLOWER_PERSISTENT=True
+      - FLOWER_DB=/data/flower.db
+      - FLOWER_BROKER_API=redis://redis:6379/1
       - PYTHONPATH=/app
+    volumes:
+      - ./app:/app/app
+      - flower_data:/data
     depends_on:
       - redis
       - celery-worker1
-      - celery-worker2
     networks:
       - app-network
     restart: unless-stopped
@@ -194,65 +174,6 @@ services:
       - app-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # PostgreSQL for NPS data
-  postgres-nps:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=nps_db
-    volumes:
-      - ./sql/init_nps.sql:/docker-entrypoint-initdb.d/init_nps.sql
-      - postgres_nps_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # PostgreSQL for Products data
-  postgres-products:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=products_db
-    volumes:
-      - ./sql/init_products.sql:/docker-entrypoint-initdb.d/init_products.sql
-      - postgres_products_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  # Trino
-  trino:
-    image: trinodb/trino:433
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./trino/catalog:/etc/trino/catalog
-    depends_on:
-      postgres-nps:
-        condition: service_healthy
-      postgres-products:
-        condition: service_healthy
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/info"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -280,6 +201,7 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/custom.ini:/etc/grafana/grafana.ini:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       # Create empty directories to prevent warnings
@@ -287,18 +209,36 @@ services:
       - /dev/null:/etc/grafana/provisioning/alerting/.gitkeep
     environment:
         - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+        - GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES=60
+        - GF_AUTH_LOGIN_MAXIMUM_INACTIVE_LIFETIME_DURATION=7d
+        - GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION=30d
+        - GF_SECURITY_ALLOW_EMBEDDING=true
+        - GF_AUTH_DISABLE_LOGIN_FORM=false
+        - GF_AUTH_DISABLE_SIGNOUT_MENU=false
+        - GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES=0  # Disable token rotation
+        - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     depends_on:
       - prometheus
+    networks:
+      - app-network
+    restart: always
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    command: --redis.addr=redis://redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
     networks:
       - app-network
     restart: unless-stopped
 
 volumes:
-  postgres_nps_data:
-  postgres_products_data:
   redis_data:
   prometheus_data:
   grafana_data:
+  flower_data:
 
 networks:
   app-network:

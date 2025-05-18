@@ -1,1279 +1,2840 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQL Chat Agent - NPS Analytics</title>
-    <style>
-        :root {
-            --primary-color: #7a5d04;
-            --sidebar-bg: #f8f9fa;
-            --sidebar-hover: #e9ecef;
-            --chat-bg: #ffffff;
-            --user-msg-bg: #e3f2fd;
-            --agent-msg-bg: #f8f9fa;
-            --border-color: #dee2e6;
-            --text-color: #212529;
-            --secondary-text: #6c757d;
-            --accent-color: #0d6efd;
+   <head>
+      <link href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>"
+         rel="icon"
+         type="image/svg+xml">
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+      <!-- Added Heatmap Plugin for chartjs-chart-matrix -->
+      <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix/dist/chartjs-chart-matrix.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+      <meta charset="UTF-8">
+      <meta content="width=device-width, initial-scale=1.0" name="viewport">
+      <title>NetScore</title>
+       <style>
+       :root {
+       /* Updated colors based on the guidelines image */
+        --primary-color:#FF9800;
+        --sidebar-bg: #ededee;
+        --sidebar-hover: #CCCCCC;
+        --chat-bg: #f7f7f8;
+        --user-msg-bg: #ededee;
+       /* grey background for user messages */
+        --agent-msg-bg: #ededee;
+       /* White background for AI messages */
+        --agent-avatar-bg: #ffb74d;
+       /* Green avatar for AI */
+        --user-avatar-bg: #666;
+       /* Orange avatar for user */
+        --border-color: #e5e5e5;
+        --text-color: #`333;
+       /* Text color for sidebar items */
+        --dropdown-bg: #ffffff;
+       /* Background for dropdown menu */
+        --dropdown-hover: #f0f0f0;
+       /* Hover background for dropdown items */
+}
+ * {
+     margin: 0;
+     padding: 0;
+     box-sizing: border-box;
+     font-family: 'Inter', sans-serif;
+}
+ body {
+     height: 100vh;
+     overflow: hidden;
+     background: var(--chat-bg);
+     flex-direction: row;
+     justify-content: flex-end;
+     align-items: normal;
+     flex-wrap: nowrap;
+}
+/* Thin scrollbar for WebKit browsers */
+::-webkit-scrollbar {
+  width: 1px;  /* vertical scrollbar */
+  height: 1px; /* horizontal scrollbar */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);  /* color of the scroll thumb */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;  /* track background */
+}
+
+
+ .sidebar2 {
+     display: block;
+     position: static;
+     float: none;
+     clear: none;
+}
+ #visualization-sec {
+     display: block;
+     position: static;
+     float: none;
+     clear: none;
+}
+ #main {
+     flex: 2;
+     display: flex;
+     flex-direction: column;
+     background-color: var(--chat-bg);
+}
+
+
+
+@media (min-width: 1200px) and (max-width: 1919px) {
+#chat-container.visual-active {
+  margin-left: 60px !important;
+}
+#chat-container{
+   margin-left: 260px !important;
+   width: 75% !important;
+ }
+#chat-container.visual-active.push-left {
+  margin-left: 260px !important;
+}
+}
+
+@media (min-width: 1920px){
+  #chat-container {
+    /* margin-left: 260px !important; */
+  }
+}
+ #chat-container {
+     flex: 1;
+     overflow-y: auto;
+     padding: 0;
+     display: flex;
+     flex-direction: column;
+     margin: 0 auto;
+     box-sizing: border-box;
+     max-width: 1200px !important;
+     width: 90% ;
+     padding-top: 40px;
+}
+ #chat-log {
+     flex: 1;
+     overflow-y: auto;
+     padding: 20px;
+     display: flex;
+     flex-direction: column;
+}
+ .message-row {
+     display: flex;
+     margin: 10px 0;
+     align-items: flex-start;
+}
+ .message-row.user {
+     justify-content: flex-start;
+    /* Align user messages to left as per guidelines */
+}
+ .message-row.agent {
+     justify-content: flex-start;
+}
+ .bubble {
+     padding: 12px 18px;
+     border-radius: 8px;
+    /* Reduced border radius per guidelines */
+     line-height: 1.4;
+     font-size: 15px;
+     word-break: break-word;
+     animation: fadeIn 0.3s ease;
+}
+ .user .bubble {
+     background: var(--user-msg-bg);
+     color: #000000;
+    /* Black text for user messages */
+     border-radius: 8px;
+}
+ .agent .bubble {
+     color: #333;
+     border-radius: 8px;
+}
+ #input-container {
+     padding: 15px;
+     position: relative;
+     bottom: 30px;
+}
+ #question-wrapper {
+     position: relative;
+}
+ #question {
+     width: 100%;
+     max-height: 200px;
+     padding: 18px 16px 30px 16px;
+     font-size: 16px;
+     border: 1px solid var(--border-color);
+     border-radius: 10px;
+     resize: none;
+     min-height: 50px;
+     background: #fff;
+     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+     overflow: hidden;
+}
+ #question::placeholder {
+     position: absolute;
+     top: 18px;
+     left: 20px;
+     color: #aaa;
+     transition: 0.2s;
+}
+ #question:focus::placeholder, #question:not(:placeholder-shown)::placeholder {
+     top: 6px;
+     font-size: 14px;
+     color: #aaa;
+}
+ #question:focus-visible {
+     outline: none;
+}
+ #send-button-wrapper {
+     position: absolute;
+     bottom: 8px;
+     right: 8px;
+}
+ #send-btn {
+     width: 36px;
+     height: 36px;
+     background-color: var(--primary-color);
+     color: white;
+     border: none;
+     border-radius: 8px;
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+ #send-btn:disabled {
+     background: #ccc;
+     cursor: not-allowed;
+}
+ #spinner {
+     display: flex;
+     justify-content: center;
+     align-items: center;
+     padding: 20px;
+     height: 20px;
+}
+ #spinner span {
+     width: 8px;
+     height: 8px;
+     margin: 0 4px;
+     background-color: var(--primary-color);
+     border-radius: 50%;
+     display: inline-block;
+     animation: bounce 1.4s infinite ease-in-out both;
+}
+ #spinner span:nth-child(2) {
+     animation-delay: 0.2s;
+}
+ #spinner span:nth-child(3) {
+     animation-delay: 0.4s;
+}
+ @keyframes bounce {
+     0%, 80%, 100% {
+         transform: scale(0);
+    }
+     40% {
+         transform: scale(1);
+    }
+}
+ @keyframes fadeIn {
+     from {
+         opacity: 0;
+         transform: translateY(10px);
+    }
+     to {
+         opacity: 1;
+         transform: translateY(0);
+    }
+}
+ #sidebar {
+     width: 260px;
+     background-color: var(--sidebar-bg);
+     color: #333;
+     display: flex;
+     flex-direction: column;
+     overflow-y: auto;
+}
+ #new-chat-btn {
+     margin: 15px;
+     padding: 12px;
+     border: 1px solid rgba(0,0,0,0.1);
+     border-radius: 6px;
+     background: transparent;
+     color: #333;
+     font-size: 14px;
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     transition: background-color 0.2s;
+}
+ #new-chat-btn:hover {
+     background-color: var(--sidebar-hover);
+}
+ #new-chat-btn svg {
+     margin-right: 8px;
+}
+ #chat-history {
+     flex: 1;
+     overflow-y: auto;
+     padding: 10px;
+}
+/* Date group styles */
+ .history-date-group {
+     margin-bottom: 15px;
+}
+ .history-date-label {
+     padding: 5px 15px;
+     font-size: 12px;
+     color: #333;
+     text-transform: uppercase;
+     margin-bottom: 5px;
+}
+/* History item styling */
+ .history-item {
+     padding: 10px 15px;
+     border-radius: 6px;
+     cursor: pointer;
+     margin-bottom: 5px;
+     font-size: 14px;
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     transition: background-color 0.2s;
+     position: relative;
+}
+ .history-item:hover, .history-item.active {
+     background-color: var(--sidebar-hover);
+}
+ .history-item:hover .more-options-btn {
+     display: flex;
+}
+ .history-item-content {
+     display: flex;
+     align-items: center;
+     flex: 1;
+     overflow: hidden;
+     cursor: pointer;
+}
+ .history-item span {
+     color: #333;
+     font-size: 14px;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+}
+ .history-item-icon {
+     margin-right: 8px;
+     color: #666;
+}
+/* More options button */
+ .more-options-btn {
+     background: transparent;
+     border: none;
+     color: #666;
+     cursor: pointer;
+     padding: 4px;
+     margin-left: 4px;
+     border-radius: 4px;
+     display: none;
+     align-items: center;
+     justify-content: center;
+     transition: background-color 0.2s;
+}
+ .more-options-btn:hover {
+     background-color: rgba(0,0,0,0.1);
+}
+/* Dropdown menu */
+ .dropdown-menu {
+     position: absolute;
+     right: 10px;
+     top: 85%;
+     background: var(--dropdown-bg);
+     border-radius: 6px;
+     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+     z-index: 100;
+     width: 150px;
+     display: none;
+     animation: fadeIn 0.2s ease;
+}
+ .dropdown-menu-item {
+     padding: 8px 12px;
+     font-size: 13px;
+     color: #333;
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+}
+ .dropdown-menu-item:hover {
+     background-color: var(--dropdown-hover);
+}
+ .dropdown-menu-item:first-child {
+     border-top-left-radius: 6px;
+     border-top-right-radius: 6px;
+}
+ .dropdown-menu-item:last-child {
+     border-bottom-left-radius: 6px;
+     border-bottom-right-radius: 6px;
+}
+ .dropdown-menu-item svg {
+     margin-right: 8px;
+     width: 14px;
+     height: 14px;
+}
+ .dropdown-menu-item.delete {
+     color: #e53935;
+}
+/* Modal for renaming */
+ .modal-backdrop {
+     position: fixed;
+     top: 0;
+     left: 0;
+     right: 0;
+     bottom: 0;
+     background-color: rgba(0,0,0,0.5);
+     z-index: 200;
+     display: none;
+     align-items: center;
+     justify-content: center;
+}
+ .modal {
+     background: white;
+     border-radius: 8px;
+     width: 400px;
+     max-width: 90%;
+     padding: 20px;
+}
+ .modal-title {
+     font-size: 16px;
+     font-weight: 600;
+     margin-bottom: 15px;
+}
+ .modal-input {
+     width: 100%;
+     padding: 10px;
+     border: 1px solid var(--border-color);
+     border-radius: 6px;
+     margin-bottom: 15px;
+}
+ .modal-buttons {
+     display: flex;
+     justify-content: flex-end;
+     gap: 10px;
+}
+ .modal-btn {
+     padding: 8px 16px;
+     border-radius: 6px;
+     border: 1px solid var(--border-color);
+     background: white;
+     cursor: pointer;
+}
+ .modal-btn.primary {
+     background: var(--primary-color);
+     color: white;
+     border: none;
+}
+/* Updated avatar styling based on guidelines */
+ .avatar {
+     width: 44px;
+    /* Size from guidelines: 44px width */
+     height: 44px;
+    /* Size from guidelines: 44px height */
+     border-radius: 100%;
+    /* Circular avatars */
+     margin-right: 15px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-weight: bold;
+     font-size: 16px;
+    /* As per guidelines */
+}
+ .user .avatar {
+     background-color: var(--user-avatar-bg);
+     color: white;
+}
+ .agent .avatar {
+     background-color: var(--agent-avatar-bg);
+     color: white;
+}
+ .message-content {
+     flex: 1;
+}
+ #send-btn:hover {
+     opacity: 0.9;
+}
+/* Table styling */
+ table {
+     width: 100%;
+     border-collapse: collapse;
+     margin: 15px 0;
+     overflow-x: auto;
+}
+ th {
+     background: #f0f0f0;
+     border: 1px solid #ccc;
+     padding: 8px;
+     text-align: left;
+}
+ td {
+     border: 1px solid #ccc;
+     padding: 8px;
+}
+ tr:nth-child(even) {
+     background-color: #f9f9f9;
+}
+ .chart-container {
+     position: relative;
+     height: 400px;
+     width: 100%;
+}
+/* Styling for the visualization controls and download button */
+ .visualization-controls {
+     display: flex;
+     justify-content: flex-end;
+     margin-bottom: 15px;
+     width: 100%;
+}
+/* Make table view work with vertical centering */
+ .visualization-pane-content .table-wrapper {
+     width: 100%;
+     max-height: 500px;
+     overflow-y: auto;
+     margin: 0 auto;
+}
+ .download-button {
+     display: flex;
+     align-items: center;
+     padding: 8px 16px;
+     background-color: var(--primary-color);
+     color: white;
+     border: none;
+     border-radius: 6px;
+     cursor: pointer;
+     font-size: 14px;
+     font-weight: 500;
+     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+     transition: background-color 0.2s, transform 0.1s;
+}
+ .download-button:hover {
+     background-color: #8c6b05;
+     transform: translateY(-1px);
+}
+ .download-button:active {
+     transform: translateY(1px);
+}
+ .download-button svg {
+     margin-right: 6px;
+}
+/* Ensure the download button is positioned properly in the visualization pane */
+ .visualization-pane-content .visualization-controls {
+     position: relative;
+     z-index: 10;
+}
+/* Make download button more prominent */
+ .visualization-pane-content .download-button {
+     min-width: 140px;
+     justify-content: center;
+}
+/* Suggestions styling */
+ .suggestions-container {
+     margin-top: 15px;
+}
+ .suggestion-chip {
+     display: inline-block;
+     background: #e1edff;
+     color: #1a5fb4;
+     padding: 8px 12px;
+     margin: 5px;
+     border-radius: 20px;
+     font-size: 0.9em;
+     cursor: pointer;
+}
+ .suggestion-chip:hover {
+     background: #d0e3ff;
+}
+/* SQL display */
+ .sql-display {
+     margin-top: 15px;
+     background: #f8f8f8;
+     padding: 15px;
+     border-radius: 5px;
+     font-family: monospace;
+     overflow-x: auto;
+     display:none;
+}
+ .sql-display pre {
+     margin: 0;
+     white-space: pre-wrap;
+}
+ .sql-header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin-bottom: 10px;
+}
+ .sql-title {
+     font-weight: bold;
+     color: #555;
+}
+ .sql-toggle {
+     background: none;
+     color: var(--primary-color);
+     border: none;
+     padding: 5px;
+     cursor: pointer;
+     margin: 0;
+}
+/* Status message */
+ #status-message {
+     position: fixed;
+     top: 20px;
+     right: 20px;
+     padding: 10px 15px;
+     background-color: rgba(0, 0, 0, 0.7);
+     color: white;
+     border-radius: 5px;
+     display: none;
+     z-index: 1000;
+}
+/* Sidebar footer */
+ #sidebar-footer {
+     padding: 10px;
+     margin-top: auto;
+     border-top: 1px solid rgba(0,0,0,0.1);
+     display: flex;
+     flex-direction: column;
+     gap: 8px;
+}
+ .sidebar-btn {
+     width: 100%;
+     padding: 8px;
+     border: 1px solid rgba(0,0,0,0.1);
+     border-radius: 4px;
+     background: transparent;
+     color: #333;
+     cursor: pointer;
+     font-size: 13px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     transition: background-color 0.2s;
+}
+ .sidebar-btn:hover {
+     background-color: var(--sidebar-hover);
+}
+ .sidebar-btn.delete {
+     background-color: #ccc;
+}
+ .sidebar-btn.export {
+     background-color: rgba(25, 135, 84, 0.2);
+}
+/* Responsive styles */
+ @media (max-width: 768px) {
+     #sidebar {
+         width: 60px;
+         transition: width 0.3s;
+    }
+     #sidebar.expanded {
+         width: 260px;
+    }
+     .history-item span, #new-chat-btn span, .history-date-label {
+         display: none;
+    }
+     #sidebar.expanded .history-item span, #sidebar.expanded #new-chat-btn span, #sidebar.expanded .history-date-label {
+         display: inline;
+    }
+}
+/* Ensure chart containers display properly */
+ .chart-container {
+     min-height: 400px;
+     width: 100%;
+     position: relative;
+     margin-bottom: 20px;
+}
+/* Data table styling */
+ .data-table {
+     width: 100%;
+     border-collapse: collapse;
+     margin: 15px 0;
+}
+ .data-table th {
+     background: #f0f0f0;
+     border: 1px solid #ccc;
+     padding: 8px;
+     text-align: left;
+}
+ .data-table td {
+     border: 1px solid #ccc;
+     padding: 8px;
+}
+ .data-table tr:nth-child(even) {
+     background-color: #f9f9f9;
+}
+ .visualization-container.visible {
+     max-height: none;
+     margin-top: 0;
+}
+ @keyframes spin {
+     to {
+         transform: rotate(360deg);
+    }
+}
+ .visualization-loading {
+     text-align: center;
+     padding: 20px;
+     margin: 20px 0;
+}
+/* Visualization toggle button */
+ .visualization-toggle {
+     display: flex;
+     align-items: center;
+     padding: 8px 12px;
+     margin-top: 15px;
+     cursor: pointer;
+     font-weight: bolder;
+     color: #FF9800;
+     transition: background-color 0.2s;
+     border-radius: 6px;
+}
+ .visualization-toggle:hover {
+     background-color: rgba(255, 152, 0, 0.1);
+}
+ .visualization-toggle svg {
+     margin-right: 8px;
+}
+/* Fix for visualization containers */
+ .visualization-container {
+     margin-top: 0;
+     padding: 0;
+     box-shadow: none;
+     max-height: none;
+     opacity: 1;
+     transition: none;
+     background: transparent;
+}
+ .visualization-container.visible {
+     max-height: 800px;
+     opacity: 1;
+     margin-top: 15px;
+}
+/* Main container to occupy full width when sidebar is hidden */
+ #main {
+     height: calc(100vh - 56px);
+    /* Subtract navbar height */
+     transition: margin-left 0.3s ease, width 0.3s ease;
+     width: calc(100% - 260px);
+     margin-left: 6 0px;
+}
+
+/* Fixed positioning for sidebar instead of float */
+ #sidebar {
+     height: calc(100vh);
+     position: fixed;
+     width: 280px;
+     left: 0;
+     top: 0px;
+    /* Position below navbar */
+     transition: left 0.3s ease;
+     z-index: 90;
+}
+ #sidebar.expanded {
+     left: -280px;
+}
+/* Ensure chat container makes use of available space */
+ #chat-container {
+     height: 100%;
+     width: 100%;
+     max-width: 1200px;
+     margin: 0 auto;
+     transition: max-width 0.3s ease;
+}
+/* Adjust chat container max-width when sidebar is hidden for better readability */
+ #sidebar.hidden ~ #main #chat-container {
+     max-width: 1000px;
+    /* Slightly narrower for better readability on wide screens */
+}
+/* Simple Top Navigation Bar */
+ .top-nav {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 10px 20px;
+}
+ .nav-left {
+     display: flex;
+     align-items: center;
+     gap: 16px;
+}
+ .sidebar-toggle {
+     background: none;
+     border: none;
+     cursor: pointer;
+     padding: 8px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     border-radius: 6px;
+     transition: background-color 0.2s;
+     margin-left: 40px;
+     transition: all 0.3s ease
+}
+ button.sidebar-toggle {
+     position: fixed;
+     top: 20px;
+     left: 200px;
+     z-index: 100;
+}
+ .sidebar-toggle:hover {
+     background-color: var(--sidebar-hover);
+}
+ .app-logo {
+     display: flex;
+
+     font-weight: 600;
+     font-size: 18px;
+     color: var(--text-color);
+     margin-left: 20px;
+     padding-top: 20px;
+}
+
+ .fixed {
+     position: fixed;
+}
+ .app-logo svg {
+     margin-right: 10px;
+}
+ .user-avatar {
+     background-color: var(--primary-color);
+     width: 36px;
+     height: 36px;
+     border-radius: 50%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-weight: 600;
+     color: white;
+     cursor: pointer;
+     transition: opacity 0.2s;
+}
+ .user-avatar:hover {
+     opacity: 0.8;
+}
+/* Update existing styles for proper layout with navbar */
+ body {
+     overflow: hidden;
+}
+ .rotated{
+     transform: rotate(180deg);
+}
+/* Ensure the split layout works correctly */
+ .visualization-pane-header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 10px 15px;
+     color: white;
+}
+ .visualization-pane-title {
+     font-weight: 600;
+}
+ .visualization-pane-close {
+     background: none;
+     border: none;
+     cursor: pointer;
+     color: #666;
+     padding: 5px;
+     border-radius: 4px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+}
+ .visualization-pane-close:hover {
+     background-color: rgba(255, 255, 255, 0.2);
+}
+ .visualization-pane-content {
+     padding: 15px;
+     overflow-y: auto;
+     flex: 1;
+     display: flex;
+     flex-direction: column;
+     justify-content: center;
+    /* Vertically center content */
+}
+/* Ensure chat container scrolls properly in split mode */
+ .split-layout .chat-pane #chat-container {
+     overflow-y: auto;
+     max-height: 100%;
+}
+/* Make sure input container stays at the bottom in split mode */
+ .split-layout .chat-pane #input-container {
+     position: sticky;
+     bottom: 30px;
+     width: calc(100% - 30px);
+     margin: 0 auto;
+}
+/* Responsive adjustments for mobile */
+ @media (max-width: 768px) {
+     .split-layout.show-visualization .chat-pane {
+         width: 0;
+         overflow: hidden;
+    }
+    /* Mobile back button for visualization */
+     .visualization-pane-header .back-to-chat {
+         display: flex;
+    }
+}
+/* Ensure table views in visualization are responsive */
+ .visualization-pane-content table {
+     width: 100%;
+     overflow-x: auto;
+     display: block;
+}
+/* Chart container sizing */
+ .visualization-pane-content .chart-container {
+     height: 400px;
+     width: 100%;
+     margin: 0 auto;
+    /* Center horizontally */
+}
+/* Title styling for centered visualization */
+ .visualization-pane-content h3 {
+     text-align: center;
+     margin-bottom: 15px;
+}
+ #main {
+     height:100%;
+    /* Subtract navbar height */
+}
+/* Adjust sidebar to have proper height with navbar */
+ #sidebar {
+     position: absolute;
+     left: 0;
+     transition: left 0.3s ease;
+}
+ #sidebar.hidden {
+     left: -260px;
+}
+/* Enhanced split layout styling with smooth transitions */
+ .split-layout {
+     display: flex;
+     width: 100%;
+     height: 100%;
+     overflow: hidden;
+     transition: all 0.3s ease;
+}
+ .chat-pane {
+     flex: 1;
+     transition: width 0.3s ease;
+     overflow: hidden;
+     display: flex;
+     flex-direction: column;
+     width: 100%;
+    /* Start at full width */
+}
+ .visualization-pane {
+     width: 0;
+    /* Start at zero width */
+     height: 100%;
+     background: white;
+     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+     overflow: hidden;
+     transition: width 0.3s ease;
+     display: flex;
+     flex-direction: column;
+}
+/* When visualization is shown */
+ .split-layout.show-visualization .chat-pane {
+     width: 100%;
+    /* Reduce to half width */
+}
+ .split-layout.show-visualization .visualization-pane {
+     width: 100%;
+    /* Expand to half width */
+}
+/* When hiding visualization, ensure smooth transition back */
+ .split-layout:not(.show-visualization) .chat-pane {
+     width: 100%;
+    /* Return to full width */
+}
+ .split-layout:not(.show-visualization) .visualization-pane {
+     width: 0;
+    /* Collapse back to zero */
+     opacity: 0;
+}
+/* Visual cue for transition */
+ .visualization-pane {
+     opacity: 0;
+     transition: opacity 0.3s ease, width 0.3s ease;
+}
+ .split-layout.show-visualization .visualization-pane {
+     opacity: 1;
+}
+/* Ensure the content doesn't shift during transition */
+ #chat-container {
+     max-width: 1200px !important;
+     width: 90%;
+     margin: 0 auto;
+     transition: width 0.3s ease, max-width 0.3s ease;
+}
+ .split-layout.show-visualization #chat-container {
+     max-width: 100% !important;
+     width: 100% !important;
+}
+/* Make sure the input container is properly positioned */
+ #input-container {
+     bottom: 20px;
+}
+/* Dark mode adjustments for the navbar */
+ body.dark-mode .top-nav {
+     background-color: #202123;
+     border-color: #4d4d4f;
+}
+ .text-gradient {
+     background: linear-gradient(90deg, #FF9800, #FFC107);
+     -webkit-background-clip: text;
+     -webkit-text-fill-color: transparent;
+     display: inline-block;
+}
+/* New Chat floating button */
+ .new-chat-button {
+     position: fixed;
+     bottom: 30px;
+     left: 30px;
+     padding: 12px 20px;
+     background: linear-gradient(90deg, #FF9800, #FFC107);
+     color: white;
+     font-weight: bold;
+     border-radius: 30px;
+     font-size: 16px;
+     cursor: pointer;
+     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+     transition: background 0.3s ease;
+     z-index: 1000;
+}
+/* Hover effect */
+ .new-chat-button:hover {
+     background: linear-gradient(90deg, #FFC107, #FF9800);
+}
+/* Sidebar style */
+ .chat-sidebar {
+     position: fixed;
+     top: 0;
+     right: -320px;
+    /* hidden initially */
+     width: 300px;
+     height: 100%;
+     background-color: #ffffff;
+     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+     padding: 20px;
+     transition: right 0.3s ease;
+     z-index: 999;
+}
+/* Active sidebar */
+ .chat-sidebar.active {
+     right: 0;
+}
+/* User account styles */
+ .user-account {
+     margin-top: auto;
+     border-top: 1px solid var(--border-color);
+     padding: 16px;
+     position: relative;
+}
+ .user-profile {
+     display: flex;
+     align-items: center;
+     cursor: pointer;
+     padding: 8px;
+     border-radius: var(--radius);
+}
+ .user-profile:hover {
+     background-color: var(--hover-color);
+}
+ .user-avatar {
+     width: 32px;
+     height: 32px;
+     border-radius: 50%;
+     background-color: #6E56CF;
+     color: white;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-weight: 600;
+     font-size: 14px;
+     margin-right: 12px;
+}
+ .user-info {
+     flex: 1;
+}
+ .user-name {
+     font-size: 14px;
+     font-weight: 500;
+     margin-bottom: 2px;
+     text-overflow: ellipsis;
+     max-width: 220px;
+}
+ .user-email {
+     font-size: 12px;
+     color: var(--light-text);
+     text-overflow: ellipsis;
+     max-width: 220px;
+}
+ .user-dropdown {
+     position: absolute;
+     bottom: 100%;
+     left: 16px;
+     right: 16px;
+     background-color: white;
+     border-radius: var(--radius);
+     box-shadow: var(--shadow);
+     border: 1px solid var(--border-color);
+     margin-bottom: 8px;
+     display: none;
+     z-index: 10;
+}
+ .user-dropdown.active {
+     display: block;
+}
+ .dropdown-item {
+     padding: 12px 16px;
+     font-size: 14px;
+     display: flex;
+     align-items: center;
+     gap: 8px;
+     cursor: pointer;
+}
+ .dropdown-item:hover {
+     background-color: var(--hover-color);
+}
+ .dropdown-item:first-child {
+     border-top-left-radius: var(--radius);
+     border-top-right-radius: var(--radius);
+}
+ .dropdown-item:last-child {
+     border-bottom-left-radius: var(--radius);
+     border-bottom-right-radius: var(--radius);
+     border-top: 1px solid var(--border-color);
+     color: #E11D48;
+}
+
+            .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
+        .left-panel {
+            background-color: #f0f0f0;
+            height: 100%;
+            overflow: auto;
+            flex: 1;
+            padding: 20px;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
 
-        body {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-            background: var(--chat-bg);
-        }
+        .right-panel {
+            background-color: #e0e0e0;
+            height: 100%;
+            overflow: auto;
+            flex: 0 0 0; /* Initially hidden */
 
-        #sidebar {
-            width: 260px;
-            background-color: var(--sidebar-bg);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            transition: width 0.3s ease;
-        }
-
-        #sidebar.collapsed {
-            width: 0;
-            overflow: hidden;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .app-logo {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            text-align: center;
-        }
-
-        #new-chat-btn {
-            margin: 16px;
-            padding: 12px;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: opacity 0.2s;
-        }
-
-        #new-chat-btn:hover {
-            opacity: 0.9;
-        }
-
-        #chat-history {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-
-        .history-date-group {
-            margin-bottom: 16px;
-        }
-
-        .history-date-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--secondary-text);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-
-        .history-item {
-            padding: 10px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-bottom: 4px;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            color: var(--text-color);
-            transition: background-color 0.2s;
-        }
-
-        .history-item:hover {
-            background-color: var(--sidebar-hover);
-        }
-
-        .history-item.active {
-            background-color: var(--sidebar-hover);
-            font-weight: 500;
-        }
-
-        .history-item-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            overflow: hidden;
-        }
-
-        .history-item-icon {
-            color: var(--secondary-text);
-        }
-
-        .history-item span {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        #main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: var(--chat-bg);
-            overflow: hidden;
-        }
-
-        .top-bar {
-            height: 60px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-        }
-
-        .sidebar-toggle {
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 8px;
-            color: var(--text-color);
-            border-radius: 6px;
-            transition: background-color 0.2s;
-        }
-
-        .sidebar-toggle:hover {
-            background-color: var(--sidebar-hover);
-        }
-
-        .top-bar-title {
-            font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .top-bar-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        #chat-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        #chat-log {
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .message-row {
-            display: flex;
-            gap: 16px;
-            width: 100%;
-        }
-
-        .avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .user .avatar {
-            background-color: var(--accent-color);
-            color: white;
-        }
-
-        .agent .avatar {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .message-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .bubble {
-            line-height: 1.6;
-            font-size: 15px;
-            color: var(--text-color);
-        }
-
-        .bubble strong {
-            font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .bubble br + br {
-            display: none; /* Prevent double line breaks */
-        }
-
-        .user .bubble {
-            background: var(--user-msg-bg);
-            padding: 12px 16px;
-            border-radius: 18px;
-            max-width: 85%;
-            align-self: flex-start;
-        }
-
-        .agent .bubble {
-            background: var(--agent-msg-bg);
-            padding: 12px 16px;
-            border-radius: 18px;
-        }
-
-        #input-container {
-            border-top: 1px solid var(--border-color);
-            padding: 20px;
-            background: var(--chat-bg);
-        }
-
-        #question-wrapper {
-            max-width: 800px;
-            margin: 0 auto;
+            box-sizing: border-box;
+            transition: flex 0.3s ease-in-out;
             position: relative;
+            width: 0;
+            opacity: 0;
         }
 
-        #question {
-            width: 100%;
-            padding: 12px 50px 12px 16px;
-            font-size: 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            resize: none;
-            min-height: 48px;
-            max-height: 200px;
-            background: var(--chat-bg);
-            color: var(--text-color);
-            outline: none;
-            transition: border-color 0.2s;
+        .right-panel.active {
+            flex: 1;
+            width: auto;
+            opacity: 1;
         }
 
-        #question:focus {
-            border-color: var(--accent-color);
+        .divider {
+            width: 2px;
+            background-color: #ccc;
+            cursor: col-resize;
+            transition: background-color 0.3s;
+            display: block; /* Always visible */
         }
 
-        #send-btn {
-            position: absolute;
-            right: 8px;
-            bottom: 8px;
-            width: 32px;
-            height: 32px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.2s;
+        .divider:hover {
+            background-color: #999;
         }
+       .push-left{
+         margin-left: 260px !important;
+         width: 75% !important;
+       }
 
-        #send-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
-        #send-btn:hover:not(:disabled) {
-            opacity: 0.9;
-        }
-
-        #spinner {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        #spinner span {
-            width: 8px;
-            height: 8px;
-            margin: 0 4px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
-            display: inline-block;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-
-        #spinner span:nth-child(1) { animation-delay: -0.32s; }
-        #spinner span:nth-child(2) { animation-delay: -0.16s; }
-
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
-
-        .sql-display {
-            margin-top: 12px;
-            background: #f8f9fa;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .sql-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: #f1f3f5;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .sql-title {
-            font-weight: 500;
-            color: var(--text-color);
-            font-size: 14px;
-        }
-
-        .sql-toggle {
-            background: none;
-            border: none;
-            color: var(--accent-color);
-            cursor: pointer;
-            font-size: 14px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .sql-toggle:hover {
-            background-color: rgba(13, 110, 253, 0.1);
-        }
-
-        .sql-content {
-            padding: 12px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-
-        .suggestions-container {
-            margin-top: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background-color: #f8f9fa;
-            padding: 16px;
-            border-radius: 8px;
-        }
-
-        .suggestions-label {
-            color: #6c757d;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        .suggestions-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .suggestion-chip {
-            background: #e8f0fe;
-            color: #1967d2;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            border: none;
-            display: inline-block;
-            white-space: nowrap;
-        }
-
-        .suggestion-chip:hover {
-            background: #d2e3fc;
-        }
-
-        .schema-info {
-            position: fixed;
-            right: 20px;
-            top: 80px;
-            width: 300px;
-            background: var(--chat-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-height: calc(100vh - 100px);
-            overflow-y: auto;
-            display: none;
-        }
-
-        .schema-info.visible {
-            display: block;
-        }
-
-        .schema-title {
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--text-color);
-        }
-
-        .schema-table {
-            margin-bottom: 16px;
-        }
-
-        .schema-table h4 {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-color);
-        }
-
-        .schema-columns {
-            font-size: 13px;
-            color: var(--secondary-text);
-            line-height: 1.5;
-        }
-
-        #sidebar-footer {
-            padding: 16px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .sidebar-btn {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: background-color 0.2s;
-            margin-bottom: 8px;
-        }
-
-        .sidebar-btn.delete {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .sidebar-btn.delete:hover {
-            background-color: #c82333;
-        }
-
-        .sidebar-btn.schema {
-            background-color: #6c757d;
-            color: white;
-        }
-
-        .sidebar-btn.schema:hover {
-            background-color: #5a6268;
-        }
-
-        /* Responsive styles */
-        @media (max-width: 768px) {
-            #sidebar {
-                position: fixed;
-                left: -260px;
-                height: 100vh;
-                z-index: 1000;
-                transition: left 0.3s ease;
-            }
-
-            #sidebar.visible {
-                left: 0;
-            }
-
-            .sidebar-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                display: none;
-                z-index: 999;
-            }
-
-            .sidebar-overlay.visible {
-                display: block;
-            }
-        }
-    </style>
-</head>
-<body>
-    <!-- Sidebar for chat history -->
-    <div id="sidebar">
-        <div class="sidebar-header">
-            <h1 class="app-logo">NPS Analytics</h1>
-        </div>
-
-        <button id="new-chat-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2">
-                <path d="M12 5v14M5 12h14"/>
-            </svg>
-            New Chat
-        </button>
-
-        <div id="chat-history">
-            <!-- Chat history will be populated here -->
-        </div>
-
-        <div id="sidebar-footer">
-            <button class="sidebar-btn schema" onclick="toggleSchemaInfo()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3h18v18H3V3z"></path>
-                    <path d="M3 9h18M3 15h18M9 3v18"></path>
-                </svg>
-                View Schema
+ </style>
+   </head>
+   <body>
+      <!-- Sidebar for chat history -->
+      <!-- Simple Top Navigation Bar -->
+      <div class="sidebar2 container">
+         <div class="app-logo fixed">
+            <h1 class="text-gradient">NetScore</h1>
+            <!--create logo toggle with right arrow-->
+         </div>
+         <div id="sidebar">
+            <div class="app-logo">
+               <h1 class="text-gradient">NetScore</h1>
+               <!--create logo toggle with left arrow-->
+               <button class="sidebar-toggle" onclick="closeSidebar(true)">
+                  <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                     <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                        stroke-width="2"/>
+                  </svg>
+               </button>
+            </div>
+            <p id="initial" style="display: none;">{{ initial }}</p>
+            <button id="new-chat-btn">
+               <svg fill="none" height="16" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 4V20M4 12H20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                     stroke-width="2"/>
+               </svg>
+               <span>New Chat</span>
             </button>
-            <button class="sidebar-btn delete" onclick="clearSession()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"></path>
-                </svg>
-                Delete Conversation
-            </button>
-        </div>
-    </div>
-
-    <!-- Main chat area -->
-    <div id="main">
-        <div class="top-bar">
-            <button class="sidebar-toggle" onclick="toggleSidebar()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 12h18M3 6h18M3 18h18"></path>
-                </svg>
-            </button>
-            <div class="top-bar-title">NPS Chat Assistant with multiple databases</div>
-            <div class="top-bar-actions">
-                <!-- Additional actions can go here -->
+            <div id="chat-history">
+               <!-- Chat history items will be added here with date grouping -->
             </div>
-        </div>
-
-                <div id="chat-container">
-                    <div id="chat-log">
-                        <!-- Welcome message will be added by JavaScript -->
-                    </div>
-            <div id="spinner" style="display: none;">
-                <span></span>
-                <span></span>
-                <span></span>
+            <!-- Sidebar footer with buttons -->
+            <div id="sidebar-footer">
+               <!---section show user details having avatar, user name and email Id and logout button-->
+               <!-- User Account Section -->
+               <button class="sidebar-btn delete" onclick="deleteCurrentSession()">
+                  <!-- Delete session icon with label delete session -->
+                  <svg fill="none" height="16" viewBox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg">
+                     <path d="M3 6H5H21M5 6V20C5 20.55 5.45 21 6 21H18C18.55 21 19 20.55 19 20V6M9 6V4C9 3.45 9.45 3 10 3H14C14.55 3 15 3.45 15 4V6M9.5 11V17M14.5 11V17"
+                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                  </svg>
+               </button>
+               <!-- line divider-->
+               <div class="user-account">
+                  <div class="user-profile" id="user-profile-toggle">
+                     <div class="user-info">
+                        <div class="user-name">{{ user_name }}</div>
+                        <div class="user-email">{{ user_email }}</div>
+                     </div>
+                     <div class="user-menu-toggle">
+                        <!--logout button -->
+                     </div>
+                  </div>
+               </div>
             </div>
-        </div>
-
-        <div id="input-container">
-            <div id="question-wrapper">
-                <textarea id="question" rows="1" placeholder="Ask a question about your NPS data..."></textarea>
-                <button id="send-btn" disabled>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
-                    </svg>
-                </button>
+         </div>
+         <!-- Main chat area -->
+         <div id="main" class="left-panel">
+            <div id="chat-container">
+               <div id="chat-log">
+                  <!-- Welcome message -->
+                  <div class="message-row agent">
+                     <div class="avatar">AI</div>
+                     <div class="message-content">
+                        <div class="bubble">
+                           <p>Hello! I'm your SQL assistant. Ask me questions about your database in natural
+                              language.
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+               <div id="spinner" style="display: none;">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+               </div>
+               <div id="input-container">
+                  <div id="question-wrapper">
+                     <textarea id="question" placeholder="Ask a question about your data..." rows="1"></textarea>
+                     <div id="send-button-wrapper">
+                        <button disabled id="send-btn" onclick="sendMessage()">
+                           <svg fill="none" height="16" stroke="currentColor" stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2" viewBox="0 0 24 24" width="16">
+                              <line x1="22" x2="11" y1="2" y2="13"></line>
+                              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                           </svg>
+                        </button>
+                     </div>
+                  </div>
+               </div>
             </div>
-        </div>
-    </div>
+         </div>
+         <div class="divider" id="divider"></div>
+          <div id="visualization-sec" class="visualization-sec right-panel">
+         </div>
+         <!-- Status message for notifications -->
+         <div id="status-message"></div>
+         <!-- Modal for renaming chat -->
+         <!-- Include utility scripts -->
+         <script src="/static/chart_utils.js"></script>
+         <script src="/static/visualizations.js"></script>
+         <script>
+    // Configuration constants
+    const DB_NAME = 'SQLChatDB_123';
+const DB_VERSION = 1;
+const STORE_NAME = 'sessions';
+const MAX_SESSIONS = 50;
+const MAX_MESSAGES_PER_SESSION = 100;
+const KEEP_VISUALIZATIONS_COUNT = 10;
 
-    <!-- Schema info panel -->
-    <div id="schema-info" class="schema-info">
-        <div class="schema-title">Database Schema</div>
-        <div class="schema-table">
-            <h4>NPS Feedback Table</h4>
-            <div class="schema-columns">
-                feedback_id, product_id, rating, comment, category, subcategory, region, carpenter_name, driver_name, created_at
-            </div>
-        </div>
-        <div class="schema-table">
-            <h4>Products Table</h4>
-            <div class="schema-columns">
-                product_id, product_name, description, price, sku, created_at
-            </div>
-        </div>
-    </div>
+// Session management
+let sessions = [];
+let currentSessionId = null;
+let currentSessionIndex = -1;
+let db = null;
+let activeDropdownId = null;
+let sessionToRename = null;
 
-    <!-- Sidebar overlay for mobile -->
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+const visualizer = new SQLVisualizer();
 
-    <script>
-        // Database configuration
-        const DB_NAME = 'NPSChatDB1';
-        const DB_VERSION = 1;
-        const STORE_NAME = 'conversations';
+// IndexedDB initialization
+async function initDB() {
+    return new Promise((resolve, reject) => {
+        if (db) {
+            resolve(db);
+            return;
+        }
 
-        let db = null;
-        let currentConversationId = null;
-        let conversations = [];
-        const WELCOME_MESSAGE = `**Hello! I'm your SQL assistant.**
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        Ask me questions about your NPS database in natural language, and I'll help you query and analyze your data.
+        request.onupgradeneeded = (event) => {
+            const database = event.target.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+                database.createObjectStore(STORE_NAME, {
+                    keyPath: 'id'
+                });
+            }
+        };
 
-        **Available tables:**
-        - NPS Feedback Table
-        - Products Table
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db);
+        };
 
-        Feel free to ask anything about your data!`;
-        // Storage adapter
-        let storageAdapter = null;
+        request.onerror = (event) => {
+            console.error("IndexedDB error:", event.target.error);
+            showStatusMessage("Database error. Falling back to memory storage.");
+            reject(event.target.error);
+        };
+    });
+}
 
-        // IndexedDB adapter
-        const indexedDBAdapter = {
-            init: async function() {
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+// Save a session to IndexedDB
+async function saveSession(session) {
+    try {
+        const database = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
 
-                    request.onerror = () => reject(request.error);
-                    request.onsuccess = () => {
-                        db = request.result;
-                        resolve(db);
-                    };
+            // Optimize session before saving
+            optimizeSessionStorage(session);
 
-                    request.onupgradeneeded = (event) => {
-                        db = event.target.result;
-                        if (!db.objectStoreNames.contains(STORE_NAME)) {
-                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-                            store.createIndex('timestamp', 'timestamp', { unique: false });
-                            store.createIndex('title', 'title', { unique: false });
+            const request = store.put(session);
+
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => reject(event.target.error);
+        });
+    } catch (error) {
+        console.error("Error saving session:", error);
+        // Fallback: save current session ID to localStorage
+        localStorage.setItem('current_session_id', currentSessionId);
+    }
+}
+
+// Save all sessions
+async function saveSessions() {
+    try {
+        for (const session of sessions) {
+            await saveSession(session);
+        }
+        // Just save the current session ID to localStorage (small data)
+        localStorage.setItem('current_session_id', currentSessionId);
+    } catch (error) {
+        console.error("Error saving all sessions:", error);
+    }
+}
+
+// Load all sessions from IndexedDB
+async function loadSessions() {
+    try {
+        const database = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                if (request.result) {
+                    sessions = request.result;
+                    // Sort by most recent first
+                    sessions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    resolve(sessions);
+                } else {
+                    resolve([]);
+                }
+            };
+
+            request.onerror = (event) => reject(event.target.error);
+        });
+    } catch (error) {
+        console.error("Error loading sessions:", error);
+        return [];
+    }
+}
+
+// Load a specific session from IndexedDB
+async function loadSession(id) {
+    try {
+        const database = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.get(id);
+
+            request.onsuccess = () => {
+                if (request.result) {
+                    resolve(request.result);
+                } else {
+                    resolve(null);
+                }
+            };
+
+            request.onerror = (event) => reject(event.target.error);
+        });
+    } catch (error) {
+        console.error("Error loading session:", error);
+        return null;
+    }
+}
+
+// Export sessions to file
+function exportSessions() {
+    try {
+        const dataStr = JSON.stringify(sessions);
+        const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+        const exportFileDefaultName = 'sql_chat_sessions.json';
+
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+
+        showStatusMessage("Sessions exported successfully!");
+    } catch (error) {
+        console.error("Error exporting sessions:", error);
+        showStatusMessage("Error exporting sessions.");
+    }
+}
+
+// Import sessions from file
+async function importSessions(event) {
+    try {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+
+        reader.onload = async (e) => {
+            try {
+                const importedSessions = JSON.parse(e.target.result);
+
+                if (Array.isArray(importedSessions) && importedSessions.length > 0) {
+                    // Add timestamp if missing
+                    importedSessions.forEach(session => {
+                        if (!session.timestamp) {
+                            session.timestamp = Date.now();
                         }
-                    };
-                });
-            },
-            saveConversation: async function(conversation) {
-                return new Promise((resolve, reject) => {
-                    const transaction = db.transaction([STORE_NAME], 'readwrite');
-                    const store = transaction.objectStore(STORE_NAME);
-                    const request = store.put(conversation);
+                    });
 
-                    request.onerror = () => reject(request.error);
-                    request.onsuccess = () => resolve();
-                });
-            },
-            loadConversations: async function() {
-                return new Promise((resolve, reject) => {
-                    const transaction = db.transaction([STORE_NAME], 'readonly');
-                    const store = transaction.objectStore(STORE_NAME);
-                    const request = store.getAll();
+                    // Merge with existing sessions
+                    const mergedSessions = [...sessions];
 
-                    request.onerror = () => reject(request.error);
-                    request.onsuccess = () => resolve(request.result);
-                });
-            },
-            deleteConversation: async function(id) {
-                return new Promise((resolve, reject) => {
-                    const transaction = db.transaction([STORE_NAME], 'readwrite');
-                    const store = transaction.objectStore(STORE_NAME);
-                    const request = store.delete(id);
+                    for (const importedSession of importedSessions) {
+                        // Check if session already exists
+                        const existingIndex = mergedSessions.findIndex(s => s.id === importedSession.id);
 
-                    request.onerror = () => reject(request.error);
-                    request.onsuccess = () => resolve();
-                });
+                        if (existingIndex !== -1) {
+                            // Update existing session
+                            mergedSessions[existingIndex] = importedSession;
+                        } else {
+                            // Add new session
+                            mergedSessions.push(importedSession);
+                        }
+                    }
+
+                    // Sort by timestamp
+                    mergedSessions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                    // Enforce maximum sessions
+                    sessions = mergedSessions.slice(0, MAX_SESSIONS);
+
+                    // Save all sessions
+                    for (const session of sessions) {
+                        await saveSession(session);
+                    }
+
+                    // Set current session if none exists
+                    if (!currentSessionId && sessions.length > 0) {
+                        currentSessionId = sessions[0].id;
+                        currentSessionIndex = 0;
+                        localStorage.setItem('current_session_id', currentSessionId);
+                    }
+
+                    // Update UI
+                    await loadSessionMessages(sessions[currentSessionIndex]);
+                    updateChatHistory();
+
+                    showStatusMessage(`Imported ${importedSessions.length} sessions successfully!`);
+                } else {
+                    showStatusMessage("Invalid imported data format.");
+                }
+            } catch (parseError) {
+                console.error("Error parsing imported file:", parseError);
+                showStatusMessage("Error parsing imported file.");
             }
         };
 
-        // LocalStorage adapter
-        const localStorageAdapter = {
-            init: async function() {
-                return Promise.resolve();
-            },
-            saveConversation: async function(conversation) {
-                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-                const index = conversations.findIndex(c => c.id === conversation.id);
+        reader.readAsText(file);
 
-                if (index >= 0) {
-                    conversations[index] = conversation;
-                } else {
-                    conversations.push(conversation);
-                }
+        // Reset file input
+        event.target.value = '';
+    } catch (error) {
+        console.error("Error importing sessions:", error);
+        showStatusMessage("Error importing sessions.");
+    }
+}
 
-                localStorage.setItem('conversations', JSON.stringify(conversations));
-                return Promise.resolve();
-            },
-            loadConversations: async function() {
-                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-                return Promise.resolve(conversations);
-            },
-            deleteConversation: async function(id) {
-                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-                const filtered = conversations.filter(c => c.id !== id);
-                localStorage.setItem('conversations', JSON.stringify(filtered));
-                return Promise.resolve();
+// Delete a session from IndexedDB
+async function deleteSession(id) {
+    try {
+        const database = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = database.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.delete(id);
+
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => reject(event.target.error);
+        });
+    } catch (error) {
+        console.error("Error deleting session:", error);
+    }
+}
+
+// Optimize session storage by removing visualization data from older messages
+function optimizeSessionStorage(session) {
+    if (!session || !session.messages) return session;
+
+    if (session.messages.length > KEEP_VISUALIZATIONS_COUNT) {
+        // Copy the session to avoid modifying the original
+        const sessionCopy = JSON.parse(JSON.stringify(session));
+
+        // Keep visualizations only for the most recent messages
+        sessionCopy.messages.forEach((msg, index) => {
+            if (index < session.messages.length - KEEP_VISUALIZATIONS_COUNT) {
+                // For older messages, delete the tableData but keep the text content
+                delete msg.tableData;
             }
-        };
-
-        // Initialize storage adapter
-        async function initStorage() {
-            try {
-                if (typeof indexedDB !== 'undefined' && indexedDB !== null) {
-                    // Try IndexedDB first
-                    await indexedDBAdapter.init();
-                    storageAdapter = indexedDBAdapter;
-                    console.log('Using IndexedDB for storage');
-                } else {
-                    throw new Error('IndexedDB not available');
-                }
-            } catch (error) {
-                console.warn('IndexedDB not available, falling back to localStorage:', error);
-                storageAdapter = localStorageAdapter;
-                await storageAdapter.init();
-                console.log('Using localStorage for storage');
-            }
-        }
-
-        // Replace direct IndexedDB functions with adapter
-        async function saveConversation(conversation) {
-            return storageAdapter.saveConversation(conversation);
-        }
-
-        async function loadConversations() {
-            const result = await storageAdapter.loadConversations();
-            conversations = result.sort((a, b) => b.timestamp - a.timestamp);
-            return conversations;
-        }
-
-        async function deleteConversation(id) {
-            return storageAdapter.deleteConversation(id);
-        }
-
-        // Simple initialization fallback
-        function simpleInit() {
-            console.log('Using simple initialization');
-            currentConversationId = Date.now().toString();
-            conversations = [{
-                id: currentConversationId,
-                title: 'Chat',
-                messages: [],
-                timestamp: Date.now(),
-                createdAt: Date.now()
-            }];
-
-            // Show welcome message
-            const chatLog = document.getElementById('chat-log');
-            chatLog.innerHTML = '';
-            const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
-            chatLog.appendChild(welcomeMsg);
-
-            updateSidebar();
-        }
-
-        // Initialize the application
-        async function initializeApp() {
-            try {
-                console.log('Starting initialization...');
-
-                // Try full initialization
-                try {
-                    await initStorage();
-                    await loadConversations();
-
-                    if (conversations.length === 0) {
-                        await createNewConversation();
-                        // Show welcome message
-                        const chatLog = document.getElementById('chat-log');
-                        chatLog.innerHTML = '';
-                        const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
-                        chatLog.appendChild(welcomeMsg);
-                    } else {
-                        await loadConversation(conversations[0].id);
-                    }
-
-                    updateSidebar();
-                    console.log('Full initialization complete');
-                } catch (error) {
-                    console.error('Full initialization failed, using simple init:', error);
-                    simpleInit();
-                }
-
-            } catch (error) {
-                console.error('Critical error in initializeApp:', error);
-                simpleInit();
-            }
-        }
-
-        // Get date category for a timestamp
-        function getDateCategory(timestamp) {
-            const now = new Date();
-            const date = new Date(timestamp);
-
-            // Reset hours for comparison
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            const oneWeekAgo = new Date(today);
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            const thirtyDaysAgo = new Date(today);
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-            const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-            if (compareDate.getTime() === today.getTime()) {
-                return 'Today';
-            } else if (compareDate.getTime() === yesterday.getTime()) {
-                return 'Yesterday';
-            } else if (compareDate > oneWeekAgo) {
-                return 'Previous 7 Days';
-            } else if (compareDate > thirtyDaysAgo) {
-                return 'Previous 30 Days';
-            } else {
-                // Group by month for older conversations
-                const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                                  'July', 'August', 'September', 'October', 'November', 'December'];
-                return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-            }
-        }
-
-        // Update sidebar with categorized conversations
-        function updateSidebar() {
-            const historyContainer = document.getElementById('chat-history');
-            historyContainer.innerHTML = '';
-
-            // Group conversations by date category
-            const groups = {};
-            conversations.forEach(conv => {
-                const category = getDateCategory(conv.timestamp);
-                if (!groups[category]) {
-                    groups[category] = [];
-                }
-                groups[category].push(conv);
-            });
-
-            // Sort categories
-            const categoryOrder = ['Today', 'Yesterday', 'Previous 7 Days', 'Previous 30 Days'];
-            const sortedCategories = Object.keys(groups).sort((a, b) => {
-                const aIndex = categoryOrder.indexOf(a);
-                const bIndex = categoryOrder.indexOf(b);
-
-                if (aIndex !== -1 && bIndex !== -1) {
-                    return aIndex - bIndex;
-                } else if (aIndex !== -1) {
-                    return -1;
-                } else if (bIndex !== -1) {
-                    return 1;
-                } else {
-                    // Sort month/year categories by date
-                    return new Date(b).getTime() - new Date(a).getTime();
-                }
-            });
-
-            // Display each category
-            sortedCategories.forEach(category => {
-                const group = groups[category];
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'history-date-group';
-
-                const label = document.createElement('div');
-                label.className = 'history-date-label';
-                label.textContent = category;
-                groupDiv.appendChild(label);
-
-                group.forEach(conv => {
-                    const item = document.createElement('div');
-                    item.className = 'history-item';
-                    if (conv.id === currentConversationId) {
-                        item.classList.add('active');
-                    }
-
-                    const content = document.createElement('div');
-                    content.className = 'history-item-content';
-                    content.innerHTML = `
-                        <svg class="history-item-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <span>${conv.title}</span>
-                    `;
-
-                    content.onclick = () => loadConversation(conv.id);
-                    item.appendChild(content);
-
-                    // Add delete button
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'delete-conversation-btn';
-                    deleteBtn.innerHTML = '×';
-                    deleteBtn.onclick = (e) => {
-                        e.stopPropagation();
-                            if (confirm('Are you sure you want to delete this conversation?')) {
-                                deleteConversationHandler(conv.id);
-                            }
-                    };
-                    item.appendChild(deleteBtn);
-
-                    groupDiv.appendChild(item);
-                });
-
-                historyContainer.appendChild(groupDiv);
-            });
-        }
-
-        // Load a specific conversation
-        async function loadConversation(id) {
-            try {
-                currentConversationId = id;
-                const conversation = conversations.find(c => c.id === id);
-
-                if (conversation) {
-                    const chatLog = document.getElementById('chat-log');
-                    chatLog.innerHTML = '';
-
-                    // Add welcome message
-                    const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
-                    chatLog.appendChild(welcomeMsg);
-
-                    // Add all messages
-                    if (conversation.messages) {
-                        conversation.messages.forEach(msg => {
-                            const msgElement = createMessageElement(msg.role, msg.content);
-                            chatLog.appendChild(msgElement);
-
-                            if (msg.sql) {
-                                addSqlDisplay(msgElement, msg.sql);
-                            }
-
-                            if (msg.suggestions) {
-                                addSuggestions(msgElement, msg.suggestions);
-                            }
-                        });
-                    }
-
-                    updateSidebar();
-                    chatLog.scrollTop = chatLog.scrollHeight;
-                }
-            } catch (error) {
-                console.error('Error in loadConversation:', error);
-            }
-        }
-
-        // Delete conversation handler
-        async function deleteConversationHandler(id) {
-            await deleteConversation(id);
-            conversations = conversations.filter(c => c.id !== id);
-
-            if (currentConversationId === id) {
-                if (conversations.length > 0) {
-                    await loadConversation(conversations[0].id);
-                } else {
-                    createNewConversation();
-                }
-            }
-
-            updateSidebar();
-        }
-
-
-        // Add message to current conversation
-        async function addMessageToConversation(role, content, additionalData = {}) {
-            const conversation = conversations.find(c => c.id === currentConversationId);
-            if (conversation) {
-                const message = {
-                    role,
-                    content,
-                    timestamp: Date.now(),
-                    ...additionalData
-                };
-
-                conversation.messages.push(message);
-                conversation.timestamp = Date.now(); // Update last activity
-
-                // Update title if it's the first user message
-                if (conversation.messages.filter(m => m.role === 'user').length === 1 && role === 'user') {
-                    conversation.title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
-                }
-
-                await saveConversation(conversation);
-                updateSidebar();
-            }
-        }
-
-        // Initialize the application
-        async function initializeApp() {
-            try {
-                console.log('Initializing app...');
-                await initStorage();
-                await loadConversations();
-
-                if (conversations.length === 0) {
-                    createNewConversation();
-                } else {
-                    await loadConversation(conversations[0].id);
-                }
-
-                updateSidebar();
-            } catch (error) {
-                console.error('Error initializing app:', error);
-                alert('Failed to initialize the application. Please refresh the page.');
-            }
-        }
-
-        // Add styles for conversation management
-        const style = document.createElement('style');
-        style.textContent = `
-            .delete-conversation-btn {
-                display: none;
-                position: absolute;
-                right: 10px;
-                top: 50%;
-                transform: translateY(-50%);
-                background: none;
-                border: none;
-                color: #dc3545;
-                cursor: pointer;
-                font-size: 18px;
-                padding: 0 5px;
-            }
-
-            .history-item:hover .delete-conversation-btn {
-                display: block;
-            }
-
-            .history-item {
-                position: relative;
-            }
-
-            .history-date-label {
-                font-size: 12px;
-                font-weight: 600;
-                color: var(--secondary-text);
-                margin: 16px 0 8px 0;
-                text-transform: uppercase;
-            }
-        `;
-        document.head.appendChild(style);
-
-
-        // Create message element
-        // Create message element
-        function createMessageElement(role, content) {
-            const messageRow = document.createElement('div');
-            messageRow.className = `message-row ${role}`;
-
-            // Format content with bold and line breaks
-            let formattedContent = content;
-            if (role === 'agent') {
-                // First trim any excess whitespace from the content
-                formattedContent = content.trim();
-
-                // Replace **text** with <strong>text</strong> for bold
-                formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-                // Split by newlines and process each line
-                const lines = formattedContent.split('\n');
-                const processedLines = lines.map(line => {
-                    let processedLine = line.trim();
-
-                    // Convert bullet points (both - and •) to HTML entities
-                    if (processedLine.startsWith('- ')) {
-                        processedLine = '&bull; ' + processedLine.substring(2);
-                    } else if (processedLine.startsWith('• ')) {
-                        processedLine = '&bull; ' + processedLine.substring(2);
-                    }
-
-                    return processedLine;
-                });
-
-                // Join with line breaks, but don't add breaks for empty lines
-                formattedContent = processedLines
-                    .filter(line => line.length > 0)
-                    .join('<br>');
-            }
-
-            messageRow.innerHTML = `
-                <div class="avatar">${role === 'user' ? 'U' : 'AI'}</div>
-                <div class="message-content">
-                    <div class="bubble">${formattedContent}</div>
-                </div>
-            `;
-            return messageRow;
-        }
-
-        // Add SQL display
-        function addSqlDisplay(messageElement, sql) {
-            const sqlContainer = document.createElement('div');
-            sqlContainer.className = 'sql-display';
-
-            const sqlHeader = document.createElement('div');
-            sqlHeader.className = 'sql-header';
-            sqlHeader.innerHTML = `
-                <span class="sql-title">SQL Query</span>
-                <button class="sql-toggle" onclick="toggleSql(this)">Show SQL</button>
-            `;
-
-            const sqlContent = document.createElement('div');
-            sqlContent.className = 'sql-content';
-            sqlContent.style.display = 'none';
-            sqlContent.textContent = sql;
-
-            sqlContainer.appendChild(sqlHeader);
-            sqlContainer.appendChild(sqlContent);
-            messageElement.querySelector('.message-content').appendChild(sqlContainer);
-        }
-
-        // Toggle SQL visibility
-        function toggleSql(button) {
-            const sqlContent = button.parentElement.nextElementSibling;
-            if (sqlContent.style.display === 'none') {
-                sqlContent.style.display = 'block';
-                button.textContent = 'Hide SQL';
-            } else {
-                sqlContent.style.display = 'none';
-                button.textContent = 'Show SQL';
-            }
-        }
-
-        // Send message
-        async function sendMessage() {
-            console.log('sendMessage called');
-            const input = document.getElementById('question');
-            const query = input.value.trim();
-
-            console.log('Query:', query);
-            if (!query) {
-                console.log('Empty query, returning');
-                return;
-            }
-
-            const sendButton = document.getElementById('send-btn');
-            sendButton.disabled = true;
-
-            // Add user message to UI
-            const chatLog = document.getElementById('chat-log');
-            const userMsg = createMessageElement('user', query);
-            chatLog.appendChild(userMsg);
-
-            // Save user message to conversation
-            await addMessageToConversation('user', query);
-
-            // Clear input and show spinner
-            input.value = '';
-            input.style.height = 'auto';
-            document.getElementById('spinner').style.display = 'flex';
-
-            // Add empty agent message
-            const agentMsg = createMessageElement('agent', '');
-            chatLog.appendChild(agentMsg);
-            chatLog.scrollTop = chatLog.scrollHeight;
-
-            try {
-                console.log('Sending query to API...');
-                const response = await fetch('/api/query', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query: query,
-                        session_id: currentConversationId
-                    })
-                });
-
-                console.log('API response status:', response.status);
-                const data = await response.json();
-                console.log('API response data:', data);
-
-                if (data.error) {
-                    agentMsg.querySelector('.bubble').textContent = `Error: ${data.error}`;
-                    await addMessageToConversation('agent', `Error: ${data.error}`);
-                } else {
-                    agentMsg.querySelector('.bubble').innerHTML = createMessageElement('agent', data.answer).querySelector('.bubble').innerHTML;
-
-                    const messageData = {
-                        sql: data.sql_query,
-                        suggestions: data.suggestions
-                    };
-
-                    if (data.sql_query) {
-                        addSqlDisplay(agentMsg, data.sql_query);
-                    }
-
-                    if (data.suggestions && data.suggestions.length > 0) {
-                        addSuggestions(agentMsg, data.suggestions);
-                    }
-
-                    // Save agent response to conversation
-                    await addMessageToConversation('agent', data.answer, messageData);
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                agentMsg.querySelector('.bubble').textContent = 'Sorry, there was an error processing your request.';
-                await addMessageToConversation('agent', 'Sorry, there was an error processing your request.');
-            } finally {
-                document.getElementById('spinner').style.display = 'none';
-                sendButton.disabled = false;
-                chatLog.scrollTop = chatLog.scrollHeight;
-            }
-        }
-
-        // Add suggestions
-        function addSuggestions(messageElement, suggestions) {
-            const suggestionsContainer = document.createElement('div');
-            suggestionsContainer.className = 'suggestions-container';
-
-            // Add label
-            const label = document.createElement('div');
-            label.className = 'suggestions-label';
-            label.textContent = 'Follow-up questions:';
-            suggestionsContainer.appendChild(label);
-
-            // Add suggestions list
-            const suggestionsList = document.createElement('div');
-            suggestionsList.className = 'suggestions-list';
-
-            suggestions.forEach(suggestion => {
-                const chip = document.createElement('div');
-                chip.className = 'suggestion-chip';
-                chip.textContent = suggestion;
-                chip.onclick = () => {
-                    document.getElementById('question').value = suggestion;
-                    sendMessage();
-                };
-                suggestionsList.appendChild(chip);
-            });
-
-            suggestionsContainer.appendChild(suggestionsList);
-            messageElement.querySelector('.message-content').appendChild(suggestionsContainer);
-        }
-
-        // Handle textarea auto-resize
-        document.getElementById('question').addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-            document.getElementById('send-btn').disabled = this.value.trim() === '';
         });
 
-        // Handle Enter key
-        document.getElementById('question').addEventListener('keydown', function(e) {
+        return sessionCopy;
+    }
+
+    return session;
+}
+
+// Show status message to user
+function showStatusMessage(message, duration = 3000) {
+    const statusEl = document.getElementById('status-message');
+    statusEl.textContent = message;
+    statusEl.style.display = 'block';
+
+    setTimeout(() => {
+        statusEl.style.display = 'none';
+    }, duration);
+}
+
+// Get date group for a timestamp
+function getDateGroup(session) {
+    // Use creationTime if available, otherwise fall back to timestamp
+    const sessionTime = session.creationTime || session.timestamp;
+
+    const now = new Date();
+    const date = new Date(sessionTime);
+
+    // Reset hours to compare dates only
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Start of current week (Sunday)
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+
+    // Start of last week
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+    const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (messageDate.getTime() === today.getTime()) {
+        return "Today";
+    } else if (messageDate.getTime() === yesterday.getTime()) {
+        return "Yesterday";
+    } else if (messageDate >= thisWeekStart) {
+        return "This Week";
+    } else if (messageDate >= lastWeekStart) {
+        return "Last Week";
+    } else {
+        return "Older";
+    }
+}
+
+// Initialize sessions if needed
+async function initializeSession() {
+    try {
+        // Get current session ID from localStorage
+        currentSessionId = localStorage.getItem('current_session_id');
+
+        // Load all sessions from IndexedDB
+        await loadSessions();
+
+        if (sessions.length === 0 || !currentSessionId) {
+            await createNewSession();
+        } else {
+            // Find current session
+            currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+
+            if (currentSessionIndex === -1) {
+                // If current session not found, use the first one
+                currentSessionIndex = 0;
+                currentSessionId = sessions[0].id;
+                localStorage.setItem('current_session_id', currentSessionId);
+            }
+
+            // Load current session messages
+            await loadSessionMessages(sessions[currentSessionIndex]);
+        }
+
+        updateChatHistory();
+    } catch (error) {
+        console.error("Error initializing session:", error);
+        showStatusMessage("Error loading sessions. Starting a new conversation.");
+        await createNewSession();
+    }
+}
+
+// Create a new chat session
+async function createNewSession() {
+    const newSession = {
+        id: Date.now().toString(),
+        title: 'New conversation',
+        timestamp: Date.now(), // This will be used for sorting (last accessed)
+        creationTime: Date.now(), // New field for categorization
+        messages: []
+    };
+
+    // Set the current session ID
+    currentSessionId = newSession.id;
+
+    // Add to the beginning of the array
+    sessions.unshift(newSession);
+    currentSessionIndex = 0;
+
+    // Enforce maximum number of sessions
+    if (sessions.length > MAX_SESSIONS) {
+        const sessionsToRemove = sessions.slice(MAX_SESSIONS);
+        sessions = sessions.slice(0, MAX_SESSIONS);
+
+        // Delete excess sessions from DB in background
+        sessionsToRemove.forEach(session => {
+            deleteSession(session.id).catch(console.error);
+        });
+    }
+
+    // Save to IndexedDB
+    await saveSession(newSession);
+    localStorage.setItem('current_session_id', currentSessionId);
+
+    // Clear chat log
+    document.getElementById('chat-log').innerHTML = `
+            <div class="message-row agent">
+              <div class="avatar">AI</div>
+              <div class="message-content">
+                <div class="bubble">
+                  <p>Hello! I'm your SQL assistant. Ask me questions about your database in natural language.</p>
+                </div>
+              </div>
+            </div>
+            `;
+
+    updateChatHistory();
+}
+
+// Load a specific session without changing its timestamp
+async function switchSession(sessionId) {
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+
+    if (sessionIndex !== -1) {
+        currentSessionId = sessionId;
+        currentSessionIndex = sessionIndex;
+
+        localStorage.setItem('current_session_id', currentSessionId);
+
+        // We'll no longer update the timestamp here
+        // sessions[sessionIndex].timestamp = Date.now();
+
+        // Still save the session in case other data changed
+        await saveSession(sessions[sessionIndex]);
+
+        // Load messages
+        await loadSessionMessages(sessions[sessionIndex]);
+
+        // Update the UI to show which session is active
+        updateChatHistory();
+    }
+}
+
+
+// Update the loadSessionMessages function to properly set visualization button text
+function loadSessionMessages(session) {
+    const chatLog = document.getElementById('chat-log');
+
+    // Start with welcome message
+    chatLog.innerHTML = `
+                <div class="message-row agent">
+                  <div class="avatar">AI</div>
+                  <div class="message-content">
+                    <div class="bubble">
+                      <p>Hello! I'm your SQL assistant. Ask me questions about your database in natural language.</p>
+                    </div>
+                  </div>
+                </div>
+              `;
+
+    // Add each message
+    if (session.messages && session.messages.length > 0) {
+        for (const msg of session.messages) {
+            if (msg.role === 'user') {
+                const userMsg = document.createElement('div');
+                userMsg.className = 'message-row user';
+                // read the initial from the hidden element id initial
+                const userInitials = document.getElementById('initial').textContent;
+                userMsg.innerHTML = `
+                      <div class="avatar">${userInitials}</div>
+                      <div class="message-content">
+                        <div class="bubble">${msg.content}</div>
+                      </div>
+                    `;
+                chatLog.appendChild(userMsg);
+            } else {
+                const agentMsg = document.createElement('div');
+                agentMsg.className = 'message-row agent';
+                agentMsg.innerHTML = `
+                      <div class="avatar">AI</div>
+                      <div class="message-content">
+                        <div class="bubble">${msg.content}</div>
+                      </div>
+                    `;
+                chatLog.appendChild(agentMsg);
+
+                // Add SQL display if available
+                if (msg.sql) {
+                    const sqlContainer = document.createElement('div');
+                    sqlContainer.className = 'sql-display';
+
+                    const sqlHeader = document.createElement('div');
+                    sqlHeader.className = 'sql-header';
+
+                    const sqlTitle = document.createElement('span');
+                    sqlTitle.className = 'sql-title';
+                    sqlTitle.textContent = 'SQL Query';
+                    sqlHeader.appendChild(sqlTitle);
+
+                    const sqlToggle = document.createElement('button');
+                    sqlToggle.className = 'sql-toggle';
+                    sqlToggle.textContent = 'Show SQL';
+                    sqlHeader.appendChild(sqlToggle);
+
+                    const sqlContent = document.createElement('pre');
+                    sqlContent.style.display = 'none';
+                    sqlContent.textContent = msg.sql;
+
+                    sqlToggle.onclick = () => {
+                        if (sqlContent.style.display === 'none') {
+                            sqlContent.style.display = 'block';
+                            sqlToggle.textContent = 'Hide SQL';
+                        } else {
+                            sqlContent.style.display = 'none';
+                            sqlToggle.textContent = 'Show SQL';
+                        }
+                    };
+
+                    sqlContainer.appendChild(sqlHeader);
+                    sqlContainer.appendChild(sqlContent);
+                    agentMsg.querySelector('.message-content').appendChild(sqlContainer);
+                }
+
+                // Recreate visualization if table data exists
+                if (msg.tableData) {
+                    console.log("Found tableData in message, setting up visualization");
+
+                    // Create visualization button (not a toggle)
+                    const visualizationToggle = document.createElement('div');
+                    visualizationToggle.className = 'visualization-toggle';
+                    visualizationToggle.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 18H21V16H3V18ZM3 13H21V11H3V13ZM3 6V8H21V6H3Z" fill="currentColor"/>
+                        </svg>
+                        <span>📊 Show Visualization</span>
+                      `;
+                    agentMsg.querySelector('.message-content').appendChild(visualizationToggle);
+
+                    // Create visualization container (initially hidden)
+                    const visualizationContainer = document.createElement('div');
+                    visualizationContainer.className = 'visualization-container';
+                    agentMsg.querySelector('.message-content').appendChild(visualizationContainer);
+
+                    // Setup visualization button
+                    setupVisualizationToggle(
+                        visualizationToggle,
+                        visualizationContainer,
+                        msg.tableData, // Use msg.tableData
+                        msg.question || '', // Use msg.question with fallback
+                        msg.sql || '' // Use msg.sql with fallback
+                    );
+                }
+            }
+        }
+    }
+
+    // Scroll to bottom
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+
+// Update the sidebar chat history list
+function updateChatHistory() {
+    const historyContainer = document.getElementById('chat-history');
+    historyContainer.innerHTML = '';
+
+    // Group sessions by date
+    const groupedSessions = {};
+
+    // Populate the groups using session object instead of just timestamp
+    sessions.forEach(session => {
+        const dateGroup = getDateGroup(session);
+        if (!groupedSessions[dateGroup]) {
+            groupedSessions[dateGroup] = [];
+        }
+        groupedSessions[dateGroup].push(session);
+    });
+
+    // Order of groups to display
+    const groupOrder = ["Today", "Yesterday", "This Week", "Last Week", "Older"];
+
+    // Close any open dropdowns when updating the chat history
+    closeDropdowns();
+
+    // Add each group to the sidebar
+    groupOrder.forEach(group => {
+        if (groupedSessions[group] && groupedSessions[group].length > 0) {
+            // Create date group header
+            const dateGroupHeader = document.createElement('div');
+            dateGroupHeader.className = 'history-date-label';
+            dateGroupHeader.textContent = group;
+            historyContainer.appendChild(dateGroupHeader);
+
+            // We'll keep the sessions in the order they are in the sessions array
+            // rather than sorting them again by timestamp within each group
+            groupedSessions[group].forEach(session => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.dataset.id = session.id;
+                if (session.id === currentSessionId) {
+                    historyItem.classList.add('active');
+                }
+
+                // Create content wrapper for icon and title
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'history-item-content';
+
+                // Session icon (chat bubble)
+                const icon = document.createElement('span');
+                icon.className = 'history-item-icon';
+                icon.innerHTML = `
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                    `;
+
+                // Session title
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = session.title;
+                titleSpan.style.marginLeft = '8px';
+
+                contentWrapper.appendChild(icon);
+                contentWrapper.appendChild(titleSpan);
+                contentWrapper.onclick = (e) => {
+                    e.stopPropagation();
+                    switchSession(session.id);
+                };
+
+                // Create more options button
+                const moreOptionsBtn = document.createElement('button');
+                moreOptionsBtn.className = 'more-options-btn';
+                moreOptionsBtn.innerHTML = `
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="1"></circle>
+                        <circle cx="12" cy="5" r="1"></circle>
+                        <circle cx="12" cy="19" r="1"></circle>
+                      </svg>
+                    `;
+                moreOptionsBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleDropdown(session.id);
+                };
+
+                // Create dropdown menu
+                const dropdownMenu = document.createElement('div');
+                dropdownMenu.className = 'dropdown-menu';
+                dropdownMenu.id = `dropdown-${session.id}`;
+
+                // Rename option
+                const renameOption = document.createElement('div');
+                renameOption.className = 'dropdown-menu-item';
+                renameOption.innerHTML = `
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                      <span>Rename chat</span>
+                    `;
+                renameOption.onclick = (e) => {
+                    e.stopPropagation();
+                    showRenameModal(session.id);
+                };
+
+                // Delete option
+                const deleteOption = document.createElement('div');
+                deleteOption.className = 'dropdown-menu-item delete';
+                deleteOption.innerHTML = `
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                      <span>Delete chat</span>
+                    `;
+                deleteOption.onclick = (e) => {
+                    e.stopPropagation();
+                    // Prevent default action
+                    e.preventDefault();
+
+                    // Call the delete function and handle any errors
+                    deleteSpecificSession(session.id).catch(error => {
+                        console.error("Error in delete option click handler:", error);
+                        showStatusMessage("Error deleting session.");
+                    });
+                };
+
+                dropdownMenu.appendChild(renameOption);
+                dropdownMenu.appendChild(deleteOption);
+
+                historyItem.appendChild(contentWrapper);
+                historyItem.appendChild(moreOptionsBtn);
+                historyItem.appendChild(dropdownMenu);
+                historyContainer.appendChild(historyItem);
+            });
+        }
+    });
+
+    // Add event listener to close dropdowns when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.dropdown-menu') && !event.target.closest('.more-options-btn')) {
+            closeDropdowns();
+        }
+    });
+}
+async function migrateExistingSessions() {
+    let needsMigration = false;
+
+    // Check if any session needs migration
+    for (const session of sessions) {
+        if (!session.hasOwnProperty('creationTime')) {
+            session.creationTime = session.timestamp; // Use current timestamp as creation time
+            needsMigration = true;
+        }
+    }
+
+    // If any sessions needed migration, save them all
+    if (needsMigration) {
+        for (const session of sessions) {
+            await saveSession(session);
+        }
+        console.log("Migration completed: Added creationTime to existing sessions");
+    }
+}
+
+// Update the initialization function to call the migration
+async function initializeSession() {
+    try {
+        // Get current session ID from localStorage
+        currentSessionId = localStorage.getItem('current_session_id');
+
+        // Load all sessions from IndexedDB
+        await loadSessions();
+
+        // Migrate existing sessions if needed
+        await migrateExistingSessions();
+
+        if (sessions.length === 0 || !currentSessionId) {
+            await createNewSession();
+        } else {
+            // Find current session
+            currentSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+
+            if (currentSessionIndex === -1) {
+                // If current session not found, use the first one
+                currentSessionIndex = 0;
+                currentSessionId = sessions[0].id;
+                localStorage.setItem('current_session_id', currentSessionId);
+            }
+
+            // Load current session messages
+            await loadSessionMessages(sessions[currentSessionIndex]);
+        }
+
+        updateChatHistory();
+    } catch (error) {
+        console.error("Error initializing session:", error);
+        showStatusMessage("Error loading sessions. Starting a new conversation.");
+        await createNewSession();
+    }
+}
+// Toggle dropdown visibility
+function toggleDropdown(sessionId) {
+    closeDropdowns(); // Close any open dropdowns first
+
+    const dropdownId = `dropdown-${sessionId}`;
+    const dropdown = document.getElementById(dropdownId);
+
+    if (dropdown) {
+        dropdown.style.display = 'block';
+        activeDropdownId = dropdownId;
+    }
+}
+
+// Close all dropdowns
+function closeDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(el => {
+        el.style.display = 'none';
+    });
+    activeDropdownId = null;
+}
+
+// Show rename modal
+function showRenameModal(sessionId) {
+    closeDropdowns();
+
+    const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+    if (sessionIndex === -1) return;
+
+    sessionToRename = sessionId;
+
+    const modal = document.getElementById('rename-modal');
+    const input = document.getElementById('rename-input');
+
+    input.value = sessions[sessionIndex].title;
+    modal.style.display = 'flex';
+    input.focus();
+    input.select();
+
+    // Handle Enter key in rename input
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            renameChat();
+        }
+    };
+}
+
+// Handle rename chat
+async function renameChat() {
+    if (!sessionToRename) return;
+
+    const newTitle = document.getElementById('rename-input').value.trim();
+    if (!newTitle) return;
+
+    const sessionIndex = sessions.findIndex(s => s.id === sessionToRename);
+    if (sessionIndex === -1) return;
+
+    sessions[sessionIndex].title = newTitle;
+    await saveSession(sessions[sessionIndex]);
+
+    // Hide modal
+    document.getElementById('rename-modal').style.display = 'none';
+    sessionToRename = null;
+
+    // Update UI
+    updateChatHistory();
+    showStatusMessage("Chat renamed successfully!");
+}
+
+// Delete a specific session
+async function deleteSpecificSession(sessionId) {
+    try {
+        closeDropdowns();
+
+        if (sessions.length <= 1) {
+            showStatusMessage("Cannot delete the only session.");
+            return;
+        }
+
+        // Ask for confirmation
+        if (!confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
+            return; // User canceled the operation
+        }
+
+        // Show loading indicator if needed
+        showStatusMessage("Deleting session...");
+
+        try {
+            // Remove from sessions array
+            sessions = sessions.filter(s => s.id !== sessionId);
+
+            // Delete from IndexedDB
+            await deleteSession(sessionId);
+
+            // If the deleted session was the current one, switch to the first available
+            if (sessionId === currentSessionId) {
+                currentSessionIndex = 0;
+                currentSessionId = sessions[0].id;
+                localStorage.setItem('current_session_id', currentSessionId);
+
+                try {
+                    await loadSessionMessages(sessions[currentSessionIndex]);
+                } catch (loadError) {
+                    console.error("Error loading replacement session:", loadError);
+                    // Continue execution even if this fails
+                }
+            }
+
+            // Update UI
+            updateChatHistory();
+            showStatusMessage("Session deleted successfully.");
+        } catch (error) {
+            console.error("Error deleting session:", error);
+            showStatusMessage("Error deleting session.");
+            throw error; // Re-throw to be caught by outer try-catch
+        }
+    } catch (outerError) {
+        console.error("Error in deleteSpecificSession:", outerError);
+        showStatusMessage("Error during session deletion process.");
+    }
+}
+
+// Fixed deleteCurrentSession function
+async function deleteCurrentSession() {
+    try {
+        if (currentSessionId) {
+            await deleteSpecificSession(currentSessionId);
+        } else {
+            showStatusMessage("No active session to delete.");
+        }
+    } catch (error) {
+        console.error("Error in deleteCurrentSession:", error);
+        showStatusMessage("Failed to delete current session.");
+    }
+}
+
+// Delete current session with confirmation
+async function deleteCurrentSession() {
+    await deleteSpecificSession(currentSessionId);
+}
+
+async function addMessage(role, content, additionalData = {}) {
+    const currentSession = sessions[currentSessionIndex];
+    if (!currentSession.messages) {
+        currentSession.messages = [];
+    }
+
+    // Create message object
+    const message = {
+        role,
+        content,
+        timestamp: Date.now(),
+        ...additionalData
+    };
+
+    // Add message to session
+    currentSession.messages.push(message);
+
+    // Enforce maximum messages per session
+    if (currentSession.messages.length > MAX_MESSAGES_PER_SESSION) {
+        currentSession.messages = currentSession.messages.slice(-MAX_MESSAGES_PER_SESSION);
+    }
+
+    // Update session timestamp (last interaction time)
+    currentSession.timestamp = Date.now();
+
+    // Update session order in the same group based on the latest timestamp
+    updateSessionOrderInGroup(currentSession);
+
+    // Save to IndexedDB
+    await saveSession(currentSession);
+}
+
+// Fixed sendMessage function that works with your API format
+let isProcessing = false;
+// Only updating the visualization part of sendMessage - modify this as needed
+// to fit into your complete sendMessage function
+async function sendMessage() {
+    if (isProcessing) {
+        console.log("Already processing a request, ignoring duplicate submission");
+        return;
+    }
+
+    isProcessing = true;
+    const input = document.getElementById('question');
+    const question = input.value.trim();
+
+    if (!question) {
+        isProcessing = false;
+        return;
+    }
+
+    // Add message to UI
+    const chatLog = document.getElementById('chat-log');
+    const userMsg = document.createElement('div');
+    userMsg.className = 'message-row user';
+
+    // Get the user's initials (or use "U" as fallback)
+    const userInitials = document.getElementById('initial') ?
+        document.getElementById('initial').textContent : 'U';
+
+    userMsg.innerHTML = `
+                <div class="avatar">${userInitials}</div>
+                <div class="message-content">
+                  <div class="bubble">${question}</div>
+                </div>
+              `;
+    chatLog.appendChild(userMsg);
+
+    // Store message in session
+    await addMessage('user', question);
+
+    // Update session title if it's the first message
+    const currentSession = sessions[currentSessionIndex];
+    if (currentSession.messages.length === 1) {
+        currentSession.title = question.length > 30 ?
+            question.substring(0, 30) + '...' :
+            question;
+        await saveSession(currentSession);
+        updateChatHistory();
+    }
+
+    // Clear input and disable send button
+    input.value = '';
+    input.style.height = 'auto';
+    document.getElementById('send-btn').disabled = true;
+
+    // Show spinner
+    document.getElementById('spinner').style.display = 'flex';
+
+    // Create agent message placeholder
+    const agentMsg = document.createElement('div');
+    agentMsg.className = 'message-row agent';
+    agentMsg.innerHTML = `
+                <div class="avatar">AI</div>
+                <div class="message-content">
+                  <div class="bubble">
+                    <div id="typing-indicator">Processing your query...</div>
+                  </div>
+                </div>
+              `;
+    chatLog.appendChild(agentMsg);
+
+    // Scroll to bottom
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    try {
+        // Send query to backend
+        const requestData = {
+            query: question
+        };
+        console.log("Sending to backend:", requestData);
+
+        const response = await fetch('/api/query', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        // Check for non-success status
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Backend error (${response.status}):`, errorText);
+            throw new Error(`Server error: ${response.status} - ${errorText || 'No error details provided'}`);
+        }
+
+        const responseText = await response.text();
+
+        // Check if response is valid JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+            console.log("Response data:", data);
+        } catch (jsonError) {
+            console.error("Response is not valid JSON:", jsonError);
+            throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}...`);
+        }
+
+        // Hide spinner
+        document.getElementById('spinner').style.display = 'none';
+
+        // Display the answer
+        if (data.answer) {
+            // Format answer with markdown
+            const formattedAnswer = marked.parse(data.answer);
+            agentMsg.querySelector('.bubble').innerHTML = formattedAnswer;
+
+            // Store in session
+            await addMessage(
+                'assistant',
+                formattedAnswer, {
+                    sql: data.sql_query || '',
+                    question: question,
+                    tableData: createTableDataFromResults(data.results)
+                }
+            );
+
+            // Display SQL query if available
+            if (data.sql_query) {
+                const sqlContainer = document.createElement('div');
+                sqlContainer.className = 'sql-display';
+
+                const sqlHeader = document.createElement('div');
+                sqlHeader.className = 'sql-header';
+
+                const sqlTitle = document.createElement('span');
+                sqlTitle.className = 'sql-title';
+                sqlTitle.textContent = 'SQL Query';
+                sqlHeader.appendChild(sqlTitle);
+
+                const sqlToggle = document.createElement('button');
+                sqlToggle.className = 'sql-toggle';
+                sqlToggle.textContent = 'Show SQL';
+                sqlHeader.appendChild(sqlToggle);
+
+                const sqlContent = document.createElement('pre');
+                sqlContent.style.display = 'none';
+                sqlContent.textContent = data.sql_query;
+
+                sqlToggle.onclick = () => {
+                    if (sqlContent.style.display === 'none') {
+                        sqlContent.style.display = 'block';
+                        sqlToggle.textContent = 'Hide SQL';
+                    } else {
+                        sqlContent.style.display = 'none';
+                        sqlToggle.textContent = 'Show SQL';
+                    }
+                };
+
+                sqlContainer.appendChild(sqlHeader);
+                sqlContainer.appendChild(sqlContent);
+                agentMsg.querySelector('.message-content').appendChild(sqlContainer);
+            }
+
+            // Create visualization if results are available
+            if (data.results && data.results.success) {
+                const tableData = createTableDataFromResults(data.results);
+                createVisualizationButton(agentMsg, tableData, question, data.sql_query || '');
+            }
+
+            // Display follow-up suggestions if available
+            if (data.suggestions && data.suggestions.length > 0) {
+                const suggestionsContainer = document.createElement('div');
+                suggestionsContainer.className = 'suggestions-container';
+
+                const suggestionsTitle = document.createElement('div');
+                suggestionsTitle.textContent = 'Follow-up questions:';
+                suggestionsTitle.style.fontSize = '0.9em';
+                suggestionsTitle.style.color = '#666';
+                suggestionsContainer.appendChild(suggestionsTitle);
+
+                data.suggestions.forEach(suggestion => {
+                    const suggestionChip = document.createElement('div');
+                    suggestionChip.className = 'suggestion-chip';
+                    suggestionChip.textContent = suggestion;
+                    suggestionChip.onclick = () => {
+                        document.getElementById('question').value = suggestion;
+                        document.getElementById('send-btn').disabled = false;
+                        sendMessage();
+                    };
+                    suggestionsContainer.appendChild(suggestionChip);
+                });
+
+                agentMsg.querySelector('.message-content').appendChild(suggestionsContainer);
+            }
+        } else {
+            // No answer in response
+            agentMsg.querySelector('.bubble').innerHTML = "No answer was received from the server.";
+            await addMessage('assistant', "No answer was received from the server.");
+        }
+
+        // Scroll to bottom of chat
+        chatLog.scrollTop = chatLog.scrollHeight;
+        isProcessing = false;
+    } catch (err) {
+        document.getElementById('spinner').style.display = 'none';
+
+        // Update agent message with detailed error
+        agentMsg.querySelector('.bubble').innerHTML = `
+                  <p>❌ Error: ${err.message || 'Unknown error'}</p>
+                  <p>Please check the console for details or try again later.</p>
+                `;
+        console.error("Error in sendMessage:", err);
+
+        // Store error in session
+        await addMessage('assistant', `Error: ${err.message || 'Unknown error connecting to the backend.'}`);
+        isProcessing = false;
+    }
+}
+
+// Helper function to update session order within its date group
+function updateSessionOrderInGroup(updatedSession) {
+    // Get the date group for the updated session
+    const updatedSessionGroup = getDateGroup(updatedSession);
+
+    // Find all sessions in the same group
+    const sessionsInSameGroup = sessions.filter(session =>
+        getDateGroup(session) === updatedSessionGroup
+    );
+
+    // Sort sessions in the same group by timestamp (most recent first)
+    sessionsInSameGroup.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    // Find sessions in other groups
+    const sessionsInOtherGroups = sessions.filter(session =>
+        getDateGroup(session) !== updatedSessionGroup
+    );
+
+    // Recreate the sessions array with the proper order
+    sessions = [
+        ...sessionsInOtherGroups,
+        ...sessionsInSameGroup
+    ];
+
+    // Sort the entire sessions array by date group priority
+    sessions.sort((a, b) => {
+        const groupOrder = {
+            "Today": 0,
+            "Yesterday": 1,
+            "This Week": 2,
+            "Last Week": 3,
+            "Older": 4
+        };
+
+        const aGroup = getDateGroup(a);
+        const bGroup = getDateGroup(b);
+
+        return groupOrder[aGroup] - groupOrder[bGroup];
+    });
+}
+
+// Helper function to convert API results to tableData format
+function createTableDataFromResults(results) {
+    if (!results || !results.success || !Array.isArray(results.columns) || !Array.isArray(results.results)) {
+        return null;
+    }
+
+    // Create data in the format expected by visualizer
+    return {
+        columns: results.columns,
+        rows: results.results
+    };
+}
+
+// Updated setupVisualizationToggle function to improve behavior
+function setupVisualizationToggle(visualizationToggle, visualizationContainer, tableData, question, sqlQuery) {
+    // Store the data as attributes on the container for retrieval after DOM changes
+    console.log("[FE VIS] setupVisualizationToggle called. Question:", question, "SQL:", sqlQuery, "TableData:", tableData);
+    if (tableData) {
+        try {
+            visualizationContainer.setAttribute('data-table', JSON.stringify(tableData));
+        } catch (e) {
+            console.error("Error storing table data:", e);
+        }
+    }
+
+    if (question) {
+        visualizationContainer.setAttribute('data-question', question);
+    }
+
+    if (sqlQuery) {
+        visualizationContainer.setAttribute('data-sql', sqlQuery);
+    }
+
+    visualizationToggle.addEventListener('click', () => {
+        console.log("[FE VIS] Visualization button/toggle CLICKED.");
+        console.log("[FE VIS] Current container for this toggle:", visualizationContainer);
+        console.log("[FE VIS] Associated tableData:", tableData, "question:", question, "sqlQuery:", sqlQuery);
+
+        // Ensure the visualizer instance exists
+        if (!window.visualizer || typeof window.visualizer.createVisualization !== 'function') {
+            console.error("[FE VIS] SQLVisualizer (window.visualizer) not initialized or createVisualization method missing!");
+            visualizationContainer.innerHTML = '<p class="error-message">Visualization engine not ready.</p>';
+            return;
+        }
+
+        // Save scroll position before any DOM changes
+        saveScrollPosition();
+
+        // Get main container
+        const mainContainer = document.getElementById('visualization-sec');
+        mainContainer.classList.add('active');
+        // check if div with id sidebar has clas expanded
+
+        const sidebar = document.getElementById('sidebar');
+          document.getElementById('chat-container').classList.add('visual-active');
+        if (!sidebar.classList.contains('expanded')) {
+
+            closeSidebar();
+            // class visual-active to div with id chat-container
+
+        }
+         // Close any open slideouts
+
+        // Check if we already have a split layout
+        let splitLayout = document.querySelector('.split-layout');
+        let chatPane, visualizationPane;
+
+        // If split layout doesn't exist, create it
+        if (!splitLayout) {
+            console.log("Creating new split layout");
+
+            // Save the original content
+            const originalContent = mainContainer.innerHTML;
+
+            // Create the split layout structure
+            splitLayout = document.createElement('div');
+            splitLayout.className = 'split-layout';
+
+            // Create chat pane
+            chatPane = document.createElement('div');
+            chatPane.className = 'chat-pane';
+            chatPane.innerHTML = originalContent;
+
+            // Create visualization pane
+            visualizationPane = document.createElement('div');
+            visualizationPane.className = 'visualization-pane';
+
+            // Add header with close button
+            const header = document.createElement('div');
+            header.className = 'visualization-pane-header';
+
+            const title = document.createElement('div');
+            title.className = 'visualization-pane-title';
+            title.textContent = '📊';
+
+            const closeButton = document.createElement('button');
+            closeButton.className = 'visualization-pane-close';
+            closeButton.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  `;
+
+            // Close button event handler
+            closeButton.addEventListener('click', () => {
+
+                mainContainer.innerHTML = originalContent; // Restore original content
+                mainContainer.classList.remove('active'); // Remove active class
+                document.getElementById('chat-container').classList.remove('push-left');
+                document.getElementById('chat-container').classList.remove('visual-active'); // Remove visual-active class
+
+            });
+
+            header.appendChild(title);
+            header.appendChild(closeButton);
+
+            // Create content container with vertical centering
+            const content = document.createElement('div');
+            content.className = 'visualization-pane-content';
+
+            visualizationPane.appendChild(header);
+            visualizationPane.appendChild(content);
+
+            // Add both panes to the split layout
+            //splitLayout.appendChild(chatPane);
+            splitLayout.appendChild(visualizationPane);
+
+            // Replace main content with split layout
+            mainContainer.innerHTML = '';
+            mainContainer.appendChild(splitLayout);
+
+            // Fix any event handlers that were lost during innerHTML replacement
+            reattachEventHandlers();
+
+            // Restore scroll position
+            restoreScrollPosition();
+        } else {
+            console.log("Using existing split layout");
+            // Get existing panes
+            chatPane = splitLayout.querySelector('.chat-pane');
+            visualizationPane = splitLayout.querySelector('.visualization-pane');
+
+            // Clear the visualization pane content to prepare for new visualization
+            const contentDiv = visualizationPane.querySelector('.visualization-pane-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = '';
+            }
+        }
+
+        // Get the visualization data
+        let localTableData = tableData;
+        let localQuestion = question;
+        let localSqlQuery = sqlQuery;
+
+        try {
+            // Try to get data from attributes if not passed directly
+            if (!localTableData && visualizationContainer.hasAttribute('data-table')) {
+                localTableData = JSON.parse(visualizationContainer.getAttribute('data-table'));
+            }
+            if (!localQuestion && visualizationContainer.hasAttribute('data-question')) {
+                localQuestion = visualizationContainer.getAttribute('data-question');
+            }
+            if (!localSqlQuery && visualizationContainer.hasAttribute('data-sql')) {
+                localSqlQuery = visualizationContainer.getAttribute('data-sql');
+            }
+        } catch (e) {
+            console.error("Error retrieving data from attributes:", e);
+        }
+
+        // Get content container
+        const contentDiv = visualizationPane.querySelector('.visualization-pane-content');
+
+        // Create visualization in the pane only if we have data
+        if (localTableData) {
+            try {
+                // Create a wrapper div for vertical centering
+                const centeringWrapper = document.createElement('div');
+                centeringWrapper.style.display = 'flex';
+                centeringWrapper.style.flexDirection = 'column';
+                centeringWrapper.style.justifyContent = 'center';
+                centeringWrapper.style.alignItems = 'center';
+                centeringWrapper.style.height = '100%';
+                centeringWrapper.style.width = '100%';
+                contentDiv.appendChild(centeringWrapper);
+
+                // Add title
+                const titleElement = document.createElement('h3');
+                titleElement.style.textAlign = 'center';
+                titleElement.style.marginBottom = '15px';
+                titleElement.textContent = localQuestion || 'Data Visualization';
+                centeringWrapper.appendChild(titleElement);
+
+                // Add download button
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'visualization-controls';
+                controlsDiv.style.display = 'flex';
+                controlsDiv.style.justifyContent = 'flex-end';
+                controlsDiv.style.marginBottom = '15px';
+                controlsDiv.style.width = '100%';
+                controlsDiv.style.position = 'fixed';
+                controlsDiv.style.bottom = '0px';
+                controlsDiv.style.right = '16px';
+
+
+                const downloadButton = document.createElement('button');
+                downloadButton.className = 'download-button';
+                downloadButton.innerHTML = `
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      Download CSV
+                    `;
+
+                downloadButton.addEventListener('click', () => {
+                    downloadCSV(localTableData, localQuestion);
+                });
+
+                controlsDiv.appendChild(downloadButton);
+                centeringWrapper.appendChild(controlsDiv);
+
+                // Display loading indicator
+                const loadingEl = document.createElement('div');
+                loadingEl.className = 'visualization-loading';
+                loadingEl.innerHTML = `
+                      <div style="text-align: center; padding: 20px;">
+                        <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid rgba(255,152,0,0.3); border-radius: 50%; border-top-color: #FF9800; animation: spin 1s ease-in-out infinite;"></div>
+                        <div style="margin-top: 10px;">Generating visualization...</div>
+                      </div>
+                    `;
+                centeringWrapper.appendChild(loadingEl);
+
+                // Set a timeout to ensure the pane is visible before creating the visualization
+                setTimeout(() => {
+                    // First show the visualization pane
+                    splitLayout.classList.add('show-visualization');
+
+                    // After transition delay, create visualization
+                    setTimeout(() => {
+                        // Remove loading indicator
+                        loadingEl.remove();
+
+                        console.log("[FE VIS] Calling visualizer.createVisualization with container:", centeringWrapper, "and tableData:", localTableData);
+                        // Create chart container
+                        const chartContainer = document.createElement('div');
+                        chartContainer.className = 'chart-container';
+                        chartContainer.style.height = '400px';
+                        chartContainer.style.width = '100%';
+                        chartContainer.style.maxWidth = '800px'; // Limit max width for better appearance
+                        chartContainer.style.margin = '0 auto'; // Center horizontally
+                        centeringWrapper.appendChild(chartContainer);
+
+                        // Create canvas for the chart
+                        const canvas = document.createElement('canvas');
+                        chartContainer.appendChild(canvas);
+
+                        // Check if data is time series
+                        const isTimeseriesData = detectTimeSeries(localTableData);
+
+                        // Initialize chart
+                        const ctx = canvas.getContext('2d');
+
+                        if (isTimeseriesData) {
+                            console.log("[FE VIS] Detected time series, creating basic line chart.");
+                            createBasicLineChart(ctx, localTableData);
+                        } else {
+                            console.log("[FE VIS] Not time series, creating simple table view as initial display inside pane.");
+                            // For tables, we'll add directly to the centering wrapper
+                            // and remove the chart container since tables have their own layout
+                            chartContainer.remove();
+                            createSimpleTableView(centeringWrapper, localTableData);
+                        }
+
+                        // THIS IS WHERE THE CALL TO GET RECOMMENDATION SHOULD HAPPEN
+                        // INSTEAD OF DIRECTLY CREATING A SIMPLE TABLE/LINE CHART
+                        // Let's change this to call the visualizer's main method
+                        console.log("[FE VIS] Attempting to get recommendation and render...");
+                        window.visualizer.createVisualization(centeringWrapper, localTableData, localQuestion, localSqlQuery)
+                            .then(() => {
+                                console.log("[FE VIS] visualizer.createVisualization completed.");
+                                // Restore scroll position after visualization is complete
+                                restoreScrollPosition();
+                            })
+                            .catch(err => {
+                                console.error("[FE VIS] Error during visualizer.createVisualization:", err);
+                                centeringWrapper.innerHTML = `<p class="error-message">Error creating visualization: ${err.message}</p>`;
+                                restoreScrollPosition();
+                            });
+
+                    }, 300); // Transition delay
+                }, 10); // Timeout for pane visibility
+            } catch (visError) {
+                console.error("Visualization error:", visError);
+                contentDiv.innerHTML = `
+                      <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                        <h3 style="text-align: center; margin-bottom: 15px;">${localQuestion || 'Data Visualization'}</h3>
+                        <p class="error-message" style="color: red; padding: 10px;">Error creating visualization: ${visError.message}</p>
+                      </div>
+                    `;
+
+                // Fallback to simple table view in centered layout
+                try {
+                    if (localTableData) {
+                        const centerDiv = document.createElement('div');
+                        centerDiv.style.display = 'flex';
+                        centerDiv.style.flexDirection = 'column';
+                        centerDiv.style.justifyContent = 'center';
+                        centerDiv.style.alignItems = 'center';
+                        centerDiv.style.height = '100%';
+                        contentDiv.appendChild(centerDiv);
+
+                        createSimpleTableView(centerDiv, localTableData);
+                    }
+                } catch (e) {
+                    console.error("Error creating fallback table view:", e);
+                }
+
+                // Still show the visualization pane
+                splitLayout.classList.add('show-visualization');
+
+                // Restore scroll position even after error
+                restoreScrollPosition();
+            }
+        } else {
+            contentDiv.innerHTML = `
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%;">
+                      <h3 style="text-align: center; margin-bottom: 15px;">Data Visualization</h3>
+                      <p class="error-message" style="color: red; padding: 10px;">No visualization data available.</p>
+                    </div>
+                  `;
+
+            // Still show the visualization pane
+            splitLayout.classList.add('show-visualization');
+
+            // Restore scroll position
+            restoreScrollPosition();
+        }
+    });
+}
+
+function updateVisualizationButtonText() {
+    document.querySelectorAll('.visualization-toggle span').forEach(span => {
+        span.textContent = '📊 Show Visualization';
+    });
+}
+
+// Call this during initialization to ensure all buttons show the correct text
+window.addEventListener('load', function() {
+    setTimeout(updateVisualizationButtonText, 500);
+});
+
+
+// Helper function to reattach event handlers after innerHTML replacement
+function reattachEventHandlers() {
+    console.log("Reattaching event handlers");
+
+    // Reattach input handlers
+    const questionInput = document.getElementById('question');
+    if (questionInput) {
+        // Remove existing listeners by cloning and replacing
+        const newInput = questionInput.cloneNode(true);
+        questionInput.parentNode.replaceChild(newInput, questionInput);
+
+        // Handle input for auto-resize
+        newInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+
+            const sendBtn = document.getElementById('send-btn');
+            if (sendBtn) {
+                sendBtn.disabled = this.value.trim() === '';
+            }
+        });
+
+        // Handle Enter key press
+        newInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 if (this.value.trim() !== '') {
@@ -1281,101 +2842,980 @@
                 }
             }
         });
+    }
 
-        // Toggle sidebar
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
+    // Reattach send button handler
+    const sendBtn = document.getElementById('send-btn');
+    if (sendBtn) {
+        const newSendBtn = sendBtn.cloneNode(true);
+        sendBtn.parentNode.replaceChild(newSendBtn, sendBtn);
+        newSendBtn.onclick = sendMessage;
+    }
 
-            if (window.innerWidth <= 768) {
-                sidebar.classList.toggle('visible');
-                overlay.classList.toggle('visible');
+    // Reattach new chat button handler
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+        const newBtn = newChatBtn.cloneNode(true);
+        newChatBtn.parentNode.replaceChild(newBtn, newChatBtn);
+        newBtn.addEventListener('click', createNewSession);
+    }
+
+    // Reattach sidebar toggle
+    const sidebarToggle = document.querySelector('.sidebar-toggle');
+    if (sidebarToggle) {
+        const newToggle = sidebarToggle.cloneNode(true);
+        sidebarToggle.parentNode.replaceChild(newToggle, sidebarToggle);
+        //newToggle.addEventListener('click', closeSidebar);
+    }
+
+    // Reattach SQL toggles
+    document.querySelectorAll('.sql-toggle').forEach(toggle => {
+        const newToggle = toggle.cloneNode(true);
+        toggle.parentNode.replaceChild(newToggle, toggle);
+
+        const sqlContent = newToggle.parentElement.nextElementSibling;
+        newToggle.onclick = () => {
+            if (sqlContent.style.display === 'none') {
+                sqlContent.style.display = 'block';
+                newToggle.textContent = 'Hide SQL';
             } else {
-                sidebar.classList.toggle('collapsed');
+                sqlContent.style.display = 'none';
+                newToggle.textContent = 'Show SQL';
             }
-        }
+        };
+    });
 
-        // Toggle schema info
-        function toggleSchemaInfo() {
-            const schemaInfo = document.getElementById('schema-info');
-            schemaInfo.classList.toggle('visible');
-        }
+    // Reattach visualization toggles
+    document.querySelectorAll('.visualization-toggle').forEach(toggle => {
+        // Get associated container
+        const container = toggle.nextElementSibling;
+        if (container && container.classList.contains('visualization-container')) {
+            // Extract the data attributes
+            let tableData, question, sqlQuery;
 
-        // Clear current conversation
-        function clearSession() {
-            if (confirm('Are you sure you want to delete this conversation?')) {
-                deleteConversationHandler(currentConversationId);
-            }
-        }
-
-        // New chat
-        document.getElementById('new-chat-btn').addEventListener('click', async function() {
-            await createNewConversation();
-        });
-
-        // Create new conversation
-        async function createNewConversation() {
             try {
-                const newConversation = {
-                    id: Date.now().toString(),
-                    title: 'New conversation',
-                    messages: [],
-                    timestamp: Date.now(),
-                    createdAt: Date.now()
-                };
+                const tableDataAttr = container.getAttribute('data-table');
+                const questionAttr = container.getAttribute('data-question');
+                const sqlQueryAttr = container.getAttribute('data-sql');
 
-                await saveConversation(newConversation);
-                conversations.unshift(newConversation);
-                currentConversationId = newConversation.id;
+                if (tableDataAttr) tableData = JSON.parse(tableDataAttr);
+                if (questionAttr) question = questionAttr;
+                if (sqlQueryAttr) sqlQuery = sqlQueryAttr;
 
-                // Clear chat and show welcome message
-                const chatLog = document.getElementById('chat-log');
-                chatLog.innerHTML = '';
-                const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
-                chatLog.appendChild(welcomeMsg);
+                // Create new toggle to replace the old one (removing all event listeners)
+                const newToggle = toggle.cloneNode(true);
+                toggle.parentNode.replaceChild(newToggle, toggle);
 
-                updateSidebar();
-                return newConversation;
-            } catch (error) {
-                console.error('Error in createNewConversation:', error);
-                throw error;
+                // Attach new event handler
+                setupVisualizationToggle(newToggle, container, tableData, question, sqlQuery);
+            } catch (e) {
+                console.error("Error updating visualization toggle:", e);
             }
         }
+    });
 
-        // Initialize
-        window.onload = function() {
-            console.log('Initializing application...');
-            initializeApp();
+    // Focus the input field for better UX
+    if (questionInput) {
+        questionInput.focus();
+    }
+}
 
-            // Add click handler to send button
-            document.getElementById('send-btn').addEventListener('click', function() {
-                console.log('Send button clicked');
-                sendMessage();
+// Function to download table data as CSV
+function downloadCSV(tableData, title) {
+    if (!tableData || !tableData.columns || !tableData.rows) {
+        console.error("No valid table data for CSV download");
+        showStatusMessage("No data available to download");
+        return;
+    }
+
+    try {
+        // Create CSV content
+        let csvContent = tableData.columns.join(',') + '\n';
+
+        // Add rows
+        tableData.rows.forEach(row => {
+            // Handle values that might contain commas by quoting them
+            const csvRow = row.map(value => {
+                const stringValue = String(value);
+                // If value contains comma, quote or newline, wrap in quotes
+                if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                    // Double any quotes inside the value
+                    return '"' + stringValue.replace(/"/g, '""') + '"';
+                }
+                return stringValue;
             });
 
-            // Show welcome message immediately
-            const chatLog = document.getElementById('chat-log');
-            if (chatLog.children.length === 0) {
-                const welcomeMsg = createMessageElement('agent', WELCOME_MESSAGE);
-                chatLog.appendChild(welcomeMsg);
+            csvContent += csvRow.join(',') + '\n';
+        });
+
+        // Create downloadable link
+        const blob = new Blob([csvContent], {
+            type: 'text/csv;charset=utf-8;'
+        });
+        const url = URL.createObjectURL(blob);
+
+        // Generate filename
+        const filename = (title || 'data').toLowerCase().replace(/[^a-z0-9]+/g, '_').substring(0, 30) + '.csv';
+
+        // Create link element and click it
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+
+        // Clean up
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showStatusMessage("CSV downloaded successfully");
+    } catch (error) {
+        console.error("Error downloading CSV:", error);
+        showStatusMessage("Error creating CSV file");
+    }
+}
+
+// Improved closeAllVisualizations function
+function closeAllVisualizations() {
+    console.log("Closing all visualizations");
+
+    // Save scroll position before any DOM changes
+    saveScrollPosition();
+
+    // Find the split layout
+    const splitLayout = document.querySelector('.split-layout');
+    if (splitLayout) {
+        // Get references to the panes
+        const visualizationPane = splitLayout.querySelector('.visualization-pane');
+        const chatPane = splitLayout.querySelector('.chat-pane');
+
+        // First hide the visualization class to trigger transition effect
+        splitLayout.classList.remove('show-visualization');
+
+        // Clear visualization content to free resources
+        const contentDiv = visualizationPane.querySelector('.visualization-pane-content');
+        if (contentDiv) {
+            contentDiv.innerHTML = '';
+        }
+
+        // After a short delay (for transition to complete), restore original layout
+        setTimeout(() => {
+            // Get the main container
+            const mainContainer = document.getElementById('main');
+
+            // Save the chat pane content
+            const chatContent = chatPane.innerHTML;
+
+            // Remove the split layout and return to normal layout
+            mainContainer.innerHTML = chatContent;
+
+            // Reattach event handlers
+            reattachEventHandlers();
+
+            // Restore scroll position
+            restoreScrollPosition();
+
+            console.log("Visualization closed, restored full chat view with scroll position preserved");
+        }, 300); // Match this delay to your CSS transition time
+    }
+}
+
+// Extract part of the sendMessage function that handles visualization creation
+function createVisualizationButton(agentMsg, tableData, question, sqlQuery) {
+    // Create visualization button
+    const visualizationToggle = document.createElement('div');
+    visualizationToggle.className = 'visualization-toggle';
+    visualizationToggle.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 18H21V16H3V18ZM3 13H21V11H3V13ZM3 6V8H21V6H3Z" fill="currentColor"/>
+                </svg>
+                <span>📊 Show Visualization</span>
+              `;
+    agentMsg.querySelector('.message-content').appendChild(visualizationToggle);
+
+    // Create visualization container (initially hidden)
+    const visualizationContainer = document.createElement('div');
+    visualizationContainer.className = 'visualization-container';
+    agentMsg.querySelector('.message-content').appendChild(visualizationContainer);
+
+    // Setup visualization button
+    setupVisualizationToggle(
+        visualizationToggle,
+        visualizationContainer,
+        tableData,
+        question,
+        sqlQuery || ''
+    );
+
+}
+
+
+// Additional function to update any existing visualization toggles to use the new behavior
+function updateExistingVisualizations() {
+    // Find all existing toggle buttons and update them
+    document.querySelectorAll('.visualization-toggle').forEach(toggle => {
+        // Remove existing event listeners (not perfect but helps)
+        const newToggle = toggle.cloneNode(true);
+        toggle.parentNode.replaceChild(newToggle, toggle);
+
+        // Get associated container
+        const container = newToggle.nextElementSibling;
+        if (container && container.classList.contains('visualization-container')) {
+            // Extract the data attributes if they exist
+            const tableDataAttr = container.getAttribute('data-table');
+            const questionAttr = container.getAttribute('data-question');
+            const sqlQueryAttr = container.getAttribute('data-sql');
+
+            let tableData, question, sqlQuery;
+
+            try {
+                if (tableDataAttr) tableData = JSON.parse(tableDataAttr);
+                if (questionAttr) question = questionAttr;
+                if (sqlQueryAttr) sqlQuery = sqlQueryAttr;
+
+                // Attach new event handler
+                setupVisualizationToggle(newToggle, container, tableData, question, sqlQuery);
+            } catch (e) {
+                console.error("Error updating existing visualization:", e);
             }
-            // Load schema
-            fetch('/api/schema')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    });
+}
+
+// Call this function when the page loads to update existing visualizations
+window.addEventListener('load', function() {
+    // Add a slight delay to ensure the DOM is fully loaded
+    setTimeout(updateExistingVisualizations, 500);
+
+});
+
+// Helper function to detect if data is a time series
+// Improved time series detection
+function detectTimeSeries(tableData) {
+    if (!tableData || !tableData.columns || tableData.columns.length < 2 || !tableData.rows || tableData.rows.length === 0) {
+        return false;
+    }
+
+    // Check column names for date-related terms in the first column
+    const firstColName = tableData.columns[0].toLowerCase();
+    const dateColumnNames = ['date', 'time', 'month', 'year', 'day', 'week', 'quarter', 'period'];
+    const hasDateColumn = dateColumnNames.some(term => firstColName.includes(term));
+
+    // Check if second column has numeric values
+    let numericValueCount = 0;
+    let totalRows = Math.min(tableData.rows.length, 10); // Check up to 10 rows
+
+    for (let i = 0; i < totalRows; i++) {
+        if (tableData.rows[i].length > 1) {
+            const value = tableData.rows[i][1];
+            if (!isNaN(parseFloat(value)) && isFinite(value)) {
+                numericValueCount++;
+            }
+        }
+    }
+
+    const hasNumericSecondCol = numericValueCount / totalRows > 0.7; // 70% of checked rows should be numeric
+
+    // Check for date patterns in first column
+    const datePatterns = [
+        /^\d{4}-\d{2}-\d{2}/, // YYYY-MM-DD
+        /^\d{1,2}\/\d{1,2}\/\d{2,4}/, // MM/DD/YYYY, M/D/YY
+        /^\d{1,2}-\d{1,2}-\d{2,4}/, // MM-DD-YYYY
+        /^\w{3}\s\d{1,2},?\s\d{4}/, // Jan 1, 2020
+        /^\d{4}$/, // Just year
+        /^Q[1-4]\s\d{4}$/ // Q1 2020
+    ];
+
+    let dateValueCount = 0;
+    for (let i = 0; i < totalRows; i++) {
+        const value = String(tableData.rows[i][0]);
+        if (datePatterns.some(pattern => pattern.test(value)) || !isNaN(new Date(value).getTime())) {
+            dateValueCount++;
+        }
+    }
+
+    const hasDateValues = dateValueCount / totalRows > 0.7; // 70% of checked rows should match date pattern
+
+    // Check if values can be sorted chronologically
+    let canBeSortedChronologically = false;
+    if (hasDateValues) {
+        try {
+            const dates = tableData.rows.slice(0, totalRows).map(row => new Date(row[0]));
+            canBeSortedChronologically = dates.every(d => !isNaN(d.getTime()));
+        } catch (e) {
+            console.log("Error checking chronological sorting:", e);
+        }
+    }
+
+    // Final decision
+    const isTimeSeries = (hasDateColumn || hasDateValues) && hasNumericSecondCol;
+    console.log("Time series detection:", {
+        hasDateColumn,
+        hasDateValues,
+        hasNumericSecondCol,
+        canBeSortedChronologically,
+        isTimeSeries
+    });
+
+    return isTimeSeries;
+}
+
+// Improved line chart creation
+function createBasicLineChart(ctx, tableData) {
+    // Extract data for the chart
+    let labels = tableData.rows.map(row => row[0]);
+    let data = tableData.rows.map(row => {
+        const val = parseFloat(row[1]);
+        return isNaN(val) ? 0 : val;
+    });
+
+    // Try to sort chronologically if possible
+    const dataWithLabels = labels.map((label, i) => ({
+        label,
+        value: data[i]
+    }));
+
+    try {
+        dataWithLabels.sort((a, b) => {
+            // Try to parse as dates
+            const aDate = new Date(a.label);
+            const bDate = new Date(b.label);
+
+            if (!isNaN(aDate) && !isNaN(bDate)) {
+                return aDate - bDate;
+            }
+
+            // Try to parse quarters (Q1 2020, etc.)
+            if (/^Q[1-4]\s\d{4}$/.test(a.label) && /^Q[1-4]\s\d{4}$/.test(b.label)) {
+                const [aQ, aYear] = a.label.split(' ');
+                const [bQ, bYear] = b.label.split(' ');
+
+                if (aYear !== bYear) {
+                    return parseInt(aYear) - parseInt(bYear);
+                }
+
+                return parseInt(aQ.substring(1)) - parseInt(bQ.substring(1));
+            }
+
+            // Fall back to string comparison
+            return String(a.label).localeCompare(String(b.label));
+        });
+    } catch (e) {
+        console.error("Error sorting data:", e);
+        // Continue with unsorted data if sort fails
+    }
+
+    // Extract sorted data
+    const sortedLabels = dataWithLabels.map(item => item.label);
+    const sortedData = dataWithLabels.map(item => item.value);
+
+    // Create chart configuration
+    const chartConfig = {
+        type: 'line',
+        data: {
+            labels: sortedLabels,
+            datasets: [{
+                label: tableData.columns[1] || 'Value',
+                data: sortedData,
+                borderColor: 'rgba(255, 152, 0, 1)',
+                backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                borderWidth: 2,
+                tension: 0.2,
+                fill: true,
+                pointRadius: 3,
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `${tableData.columns[1] || 'Value'} by ${tableData.columns[0] || 'Date'}`
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                },
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: tableData.columns[0] || 'Date'
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Schema loaded:', data);
-                    // Update schema display if needed
-                })
-                .catch(error => {
-                    console.warn('Error loading schema:', error);
-                    // Continue without schema - it's already hardcoded in HTML
-                });
-        };
-    </script>
-</body>
+                },
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: tableData.columns[1] || 'Value'
+                    }
+                }
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    right: 10,
+                    bottom: 10,
+                    left: 10
+                }
+            }
+        }
+    };
+
+    // Create the chart
+    try {
+        new Chart(ctx, chartConfig);
+    } catch (error) {
+        console.error("Error creating chart:", error);
+        throw error;
+    }
+}
+
+function enhancedCreateVisualization(container, tableData, question, sql) {
+    try {
+        // If we have the original visualizer object, use it with enhancements
+        if (typeof visualizer !== 'undefined' && visualizer.createVisualization) {
+            // Check if this is time series data
+            if (tableData.visualizationHint === 'time_series') {
+                // Create a custom recommendation for time series
+                const recommendation = {
+                    visualization_type: 'line_chart',
+                    config: {
+                        x_axis: tableData.columns[0],
+                        y_axis: tableData.columns[1],
+                        title: `${tableData.columns[1]} by ${tableData.columns[0]}`,
+                        subtitle: `Data visualization for time series`
+                    },
+                    reasoning: 'Time series data is best visualized as a line chart'
+                };
+
+                // Call the original function with our custom recommendation
+                const originalCreate = visualizer.createVisualization.bind(visualizer);
+
+                // Create a temporary version of tableData without our extra property
+                const cleanTableData = {
+                    columns: tableData.columns,
+                    rows: tableData.rows
+                };
+
+                // Override any internal recommendation by directly calling internal methods
+                if (typeof visualizer.createLineChartWithConfig === 'function') {
+                    // Create the container for the chart
+                    container.innerHTML = ''; // Clear container
+                    const chartContainer = document.createElement('div');
+                    chartContainer.className = 'chart-container';
+                    chartContainer.style.height = '400px';
+                    chartContainer.style.width = '100%';
+
+                    // Create canvas for the chart
+                    const canvas = document.createElement('canvas');
+                    chartContainer.appendChild(canvas);
+
+                    // Add visualization title
+                    const titleElement = document.createElement('h3');
+                    titleElement.style.textAlign = 'center';
+                    titleElement.style.marginBottom = '5px';
+                    titleElement.textContent = recommendation.config.title;
+                    container.appendChild(titleElement);
+
+                    // Add chart container
+                    container.appendChild(chartContainer);
+
+                    // Get canvas context
+                    const ctx = canvas.getContext('2d');
+
+                    // Call the internal method directly
+                    visualizer.createLineChartWithConfig(ctx, cleanTableData, recommendation.config);
+
+                    // Add download control
+                    visualizer.addVisualizationControls(container, cleanTableData, question, sql, 'line');
+
+                    return;
+                } else {
+                    // Fall back to passing our recommendation to the original function
+                    originalCreate(container, cleanTableData, question, sql, recommendation);
+                }
+            } else {
+                // Use the original function for non-time series data
+                visualizer.createVisualization(container, tableData, question, sql);
+            }
+        } else {
+            // Fallback visualization if visualizer is not available
+            createFallbackVisualization(container, tableData);
+        }
+    } catch (error) {
+        console.error("Error in enhanced visualization:", error);
+        container.innerHTML = `<p class="error-message">Error creating visualization: ${error.message}</p>`;
+    }
+}
+
+// Helper function to check if this is time series data
+function isTimeSeries(tableData) {
+    if (!tableData || !tableData.columns || tableData.columns.length < 2 || !tableData.rows || tableData.rows.length === 0) {
+        return false;
+    }
+
+    // Check if first column has date-like name
+    const firstColName = tableData.columns[0].toLowerCase();
+    const hasDateColumn = firstColName.includes('date') ||
+        firstColName.includes('time') ||
+        firstColName.includes('month') ||
+        firstColName.includes('year') ||
+        firstColName.includes('day');
+
+    // Check if second column has number-like name
+    const secondColName = tableData.columns[1].toLowerCase();
+    const hasCountColumn = secondColName.includes('count') ||
+        secondColName.includes('total') ||
+        secondColName.includes('sum') ||
+        secondColName.includes('value') ||
+        secondColName.includes('amount');
+
+    // Check if first column values look like dates
+    let dateValueCount = 0;
+    const datePattern = /^\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}(\/\d{2,4})?|\w{3}\s\d{4}$/i;
+
+    for (let i = 0; i < Math.min(5, tableData.rows.length); i++) {
+        const firstValue = tableData.rows[i][0];
+        if (typeof firstValue === 'string' && datePattern.test(firstValue)) {
+            dateValueCount++;
+        }
+    }
+
+    // Check if second column values are numeric
+    let numericValueCount = 0;
+    for (let i = 0; i < Math.min(5, tableData.rows.length); i++) {
+        const secondValue = tableData.rows[i][1];
+        if (!isNaN(parseFloat(secondValue)) && isFinite(secondValue)) {
+            numericValueCount++;
+        }
+    }
+
+    // Return true if we have strong evidence this is time series data
+    return (hasDateColumn || dateValueCount > 2) && (hasCountColumn || numericValueCount > 2);
+}
+
+// Create a basic line chart with Chart.js directly
+
+
+// Create a simple table view as fallback
+function createSimpleTableView(container, tableData) {
+    console.log("Creating simple table view");
+
+    if (!tableData || !tableData.columns || !tableData.rows) {
+        container.innerHTML += '<p class="info-message">No data available to visualize</p>';
+        return;
+    }
+
+    // Create a wrapper div for vertical centering
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.width = '100%';
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.flexDirection = 'column';
+    contentWrapper.style.alignItems = 'center'; // Center contents horizontally
+
+    // Add a subtitle showing row count
+    const subtitle = document.createElement('p');
+    subtitle.style.textAlign = 'center';
+    subtitle.style.fontSize = '14px';
+    subtitle.style.color = '#666';
+    subtitle.style.margin = '10px 0 20px';
+    subtitle.textContent = `${tableData.rows.length} ${tableData.rows.length === 1 ? 'row' : 'rows'} in dataset`;
+    contentWrapper.appendChild(subtitle);
+
+    // Create table wrapper with fixed height for scrolling
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'table-wrapper';
+    tableWrapper.style.width = '100%';
+    tableWrapper.style.overflowX = 'auto';
+    tableWrapper.style.maxHeight = '60vh'; // Use viewport height for better responsiveness
+    tableWrapper.style.overflowY = 'auto';
+    tableWrapper.style.border = '1px solid #e5e5e5';
+    tableWrapper.style.borderRadius = '5px';
+    tableWrapper.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+    contentWrapper.appendChild(tableWrapper);
+
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'data-table';
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    tableWrapper.appendChild(table);
+
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    tableData.columns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        th.style.position = 'sticky';
+        th.style.top = '0';
+        th.style.backgroundColor = '#f0f0f0';
+        th.style.zIndex = '10';
+        th.style.padding = '12px 15px';
+        th.style.textAlign = 'left';
+        th.style.fontWeight = '600';
+        th.style.borderBottom = '2px solid #ccc';
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create body
+    const tbody = document.createElement('tbody');
+
+    const maxRowsToShow = 1000; // Limit for performance reasons
+    const rowsToRender = tableData.rows.slice(0, maxRowsToShow);
+
+    rowsToRender.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        tr.style.backgroundColor = rowIndex % 2 === 0 ? '#ffffff' : '#f9f9f9';
+        tr.style.transition = 'background-color 0.2s';
+
+        // Hover effect
+        tr.addEventListener('mouseenter', () => {
+            tr.style.backgroundColor = '#f0f7ff';
+        });
+        tr.addEventListener('mouseleave', () => {
+            tr.style.backgroundColor = rowIndex % 2 === 0 ? '#ffffff' : '#f9f9f9';
+        });
+
+        row.forEach((cell, cellIndex) => {
+            const td = document.createElement('td');
+
+            // Format cell content
+            let formattedContent = cell;
+
+            // Try to detect and format numbers
+            if (typeof cell === 'string' && !isNaN(parseFloat(cell)) && isFinite(cell)) {
+                const num = parseFloat(cell);
+                if (num % 1 !== 0) { // Check if it's a decimal
+                    formattedContent = num.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    });
+                } else {
+                    formattedContent = num.toLocaleString();
+                }
+            }
+
+            td.textContent = formattedContent;
+            td.style.padding = '10px 15px';
+            td.style.borderBottom = '1px solid #e5e5e5';
+
+            // Right-align numeric columns
+            if (!isNaN(parseFloat(cell)) && isFinite(cell)) {
+                td.style.textAlign = 'right';
+            }
+
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+
+    // Add warning message if data was truncated
+    if (tableData.rows.length > maxRowsToShow) {
+        const notice = document.createElement('p');
+        notice.style.fontSize = '13px';
+        notice.style.color = '#666';
+        notice.style.margin = '10px 0 0';
+        notice.style.fontStyle = 'italic';
+        notice.style.textAlign = 'center';
+        notice.textContent = `Showing ${maxRowsToShow} of ${tableData.rows.length} rows. Download the CSV for complete data.`;
+        contentWrapper.appendChild(notice);
+    }
+
+    // Add the content wrapper to the container
+    container.appendChild(contentWrapper);
+
+    console.log("Table created successfully");
+}
+
+function createFallbackVisualization(container, tableData) {
+    if (!tableData || !tableData.columns || !tableData.rows) {
+        container.innerHTML = '<p class="info-message">No data available to visualize</p>';
+        return;
+    }
+
+    // Create a basic table view
+    const table = document.createElement('table');
+    table.className = 'data-table';
+
+    // Create header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+
+    tableData.columns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column;
+        headerRow.appendChild(th);
+    });
+
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Create body
+    const tbody = document.createElement('tbody');
+
+    tableData.rows.forEach(row => {
+        const tr = document.createElement('tr');
+
+        row.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell;
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    container.innerHTML = '';
+    container.appendChild(table);
+}
+
+// Handle textarea auto-expand and button enable/disable
+document.getElementById('question').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+
+    document.getElementById('send-btn').disabled = this.value.trim() === '';
+});
+
+// Handle Enter key in textarea
+document.getElementById('question').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (this.value.trim() !== '') {
+            sendMessage();
+        }
+    }
+});
+
+// Handle new chat button
+const newChatBtn = document.getElementById('new-chat-btn');
+if (newChatBtn) {
+    // Remove any existing event listeners to prevent duplicates
+    const newChatBtnClone = newChatBtn.cloneNode(true);
+    if (newChatBtn.parentNode) {
+        newChatBtn.parentNode.replaceChild(newChatBtnClone, newChatBtn);
+    }
+
+    // Add the event listener to the cloned button
+    newChatBtnClone.addEventListener('click', async function() {
+        console.log("New chat button clicked");
+        try {
+            await createNewSession();
+            console.log("New chat session created successfully");
+
+            // Ensure input is cleared and focused
+            const questionInput = document.getElementById('question');
+            if (questionInput) {
+                questionInput.value = '';
+                questionInput.focus();
+                questionInput.style.height = 'auto';
+            }
+
+            // Update UI elements
+            const sendBtn = document.getElementById('send-btn');
+            if (sendBtn) {
+                sendBtn.disabled = true;
+            }
+        } catch (error) {
+            console.error("Error creating new session:", error);
+            showStatusMessage("Error creating new chat session.");
+        }
+    });
+} else {
+    console.error("New chat button not found in the DOM");
+}
+
+// Function to initialize scroll position tracking
+function setupScrollPreservation() {
+    // Create a global variable to store scroll position
+    window.savedScrollPosition = {
+        chatLog: 0,
+        chatContainer: 0
+    };
+    console.log("Scroll position tracking initialized");
+}
+
+// Function to save the current scroll position
+function saveScrollPosition() {
+    const chatLog = document.getElementById('chat-log');
+    const chatContainer = document.getElementById('chat-container');
+
+    if (chatLog) {
+        window.savedScrollPosition.chatLog = chatLog.scrollTop;
+    }
+
+    if (chatContainer) {
+        window.savedScrollPosition.chatContainer = chatContainer.scrollTop;
+    }
+
+    console.log("Saved scroll position:", window.savedScrollPosition);
+}
+
+// Function to restore the saved scroll position
+function restoreScrollPosition() {
+    // Use setTimeout to ensure DOM is fully updated
+    setTimeout(() => {
+        const chatLog = document.getElementById('chat-log');
+        const chatContainer = document.getElementById('chat-container');
+
+        if (chatLog && window.savedScrollPosition.chatLog) {
+            chatLog.scrollTop = window.savedScrollPosition.chatLog;
+        }
+
+        if (chatContainer && window.savedScrollPosition.chatContainer) {
+            chatContainer.scrollTop = window.savedScrollPosition.chatContainer;
+        }
+
+        console.log("Restored scroll position:", window.savedScrollPosition);
+    }, 50); // Short delay to ensure DOM is updated
+}
+
+function openSidebar() {
+    document.getElementById('sidebar').classList.toggle('expanded');
+    // make sidebar style as display none
+    //  document.getElementById('sidebar').style.display = 'flex';
+
+}
+
+// Check database availability
+async function checkDatabaseAvailability() {
+    try {
+        await initDB();
+        return true;
+    } catch (error) {
+        console.error("IndexedDB not available:", error);
+        showStatusMessage("Database not available. Using memory storage only.");
+        return false;
+    }
+}
+
+
+ // Toggle sidebar on mobile with force as default false
+
+ function closeSidebar(sidebarAction=false) {
+
+   document.getElementById('sidebar').classList.toggle('expanded');
+   // add rotated to class sidebar-toggle
+   const arrow = document.getElementsByClassName('sidebar-toggle')[0];
+   arrow.classList.toggle('rotated');
+   // check visualization-sec has class active
+    const visualizationSec = document.getElementById('visualization-sec');
+    const isVactive = visualizationSec.classList.contains('active');
+
+      //if div with id  sidebar has class expanded remove class push-left from chat-container
+   if(isVactive){
+
+      if(document.getElementById('sidebar').classList.contains('expanded')) {
+            document.getElementById('chat-container').classList.remove('push-left');
+        } else {
+            document.getElementById('chat-container').classList.add('push-left');
+        }
+   }
+
+
+
+
+
+}
+function openSidebar() {
+  document.getElementById('sidebar').classList.toggle('expanded');
+  document.getElementById('chat-history').classList.toggle('expanded');
+}
+
+// Initialize the app with scroll preservation
+window.onload = async function() {
+    try {
+        // Initialize scroll position preservation
+        setupScrollPreservation();
+
+        // Initialize SQLVisualizer safely first
+        if (typeof SQLVisualizer !== 'undefined') {
+            window.visualizer = new SQLVisualizer();
+            console.log("SQLVisualizer initialized successfully");
+        } else {
+            console.warn("SQLVisualizer class is not defined. Using fallback visualization.");
+        }
+
+        // Check if IndexedDB is available
+        const dbAvailable = await checkDatabaseAvailability();
+
+        if (dbAvailable) {
+            try {
+                // Initialize session
+                await initializeSession();
+                console.log("Application initialized successfully with IndexedDB.");
+            } catch (error) {
+                console.error("Error initializing application:", error);
+                showStatusMessage("Error initializing. Some features may not work.");
+            }
+        } else {
+            // Fallback to simple memory storage
+            console.log("Using in-memory storage only.");
+            await createNewSession();
+        }
+
+        // Update existing visualizations with improved toggle behavior
+        updateExistingVisualizations();
+
+        // Reinitialize any other event handlers that might be missing
+        const confirmRenameBtn = document.getElementById('confirm-rename');
+        if (confirmRenameBtn) {
+            const newBtn = confirmRenameBtn.cloneNode(true);
+            confirmRenameBtn.parentNode.replaceChild(newBtn, confirmRenameBtn);
+            newBtn.addEventListener('click', renameChat);
+        }
+
+        const cancelRenameBtn = document.getElementById('cancel-rename');
+        if (cancelRenameBtn) {
+            const newBtn = cancelRenameBtn.cloneNode(true);
+            cancelRenameBtn.parentNode.replaceChild(newBtn, cancelRenameBtn);
+            newBtn.addEventListener('click', function() {
+                document.getElementById('rename-modal').style.display = 'none';
+                sessionToRename = null;
+            });
+        }
+
+        // Make sure Event handlers are properly attached to existing elements
+        reattachEventHandlers();
+
+        console.log("Application fully initialized with scroll preservation");
+    } catch (error) {
+        console.error("Error in application initialization:", error);
+        showStatusMessage("Application error. Please refresh the page.");
+    }
+};
+
+</script>
+      </div>
+
+      <div class="modal-backdrop" id="rename-modal">
+         <div class="modal">
+            <div class="modal-title">Rename chat</div>
+            <input class="modal-input" id="rename-input" placeholder="Enter new name" type="text">
+            <div class="modal-buttons">
+               <button class="modal-btn" id="cancel-rename">Cancel</button>
+               <button class="modal-btn primary" id="confirm-rename">Rename</button>
+            </div>
+         </div>
+         `
+      </div>
+   </body>
 </html>

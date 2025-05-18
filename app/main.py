@@ -1,31 +1,59 @@
 from fastapi import FastAPI, HTTPException, Request, Depends, BackgroundTasks
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, Depends, HTTPException,Request
+from fastapi.responses import HTMLResponse, JSONResponse,Response, RedirectResponse
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, validator
 from typing import List, Dict, Any, Optional
+from msal import ConfidentialClientApplication
 import os
-from datetime import datetime
 import json
 import logging
 import time
 import re
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
-from prometheus_client import CONTENT_TYPE_LATEST
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 import psutil
+import redis
 
-from .services.memory_service import MemoryService
-from .services.suggestion_service import SuggestionService
-from .tasks import process_query_task
-from .agents.sql_agent import SQLAgent, DatabaseConnectionError, QueryExecutionError, AIServiceError
-from .graphs.correction_graph import create_correction_graph
+from app.services.memory_service import MemoryService
+from app.services.suggestion_service import SuggestionService
+from app.services.visualization_service import VisualizationService
+from app.tasks import process_query_task
+from app.agents.sql_agent import SQLAgent, DatabaseConnectionError, QueryExecutionError, AIServiceError
+from app.graphs.correction_graph import create_correction_graph
+from app.tasks import process_query_task
+
+# Import config
+from app.config import API, LOGGING, REDIS, MEMORY, CACHE
+
+from datetime import datetime, timedelta
+from pathlib import Path
+
+# QUERY_LOG_FILE = "query_log.jsonl" # Old definition
+QUERY_LOG_FILE = Path(__file__).parent / "query_log.jsonl" # New definition
+
+MS_CLIENT_ID = os.getenv("MS_CLIENT_ID")
+MS_CLIENT_SECRET = os.getenv("MS_CLIENT_SECRET")
+MS_TENANT_ID = os.getenv("MS_TENANT_ID")
+MS_REDIRECT_URI = os.getenv("MS_REDIRECT_URI", "http://localhost:8003/auth/callback")
+AUTHORITY = f"https://login.microsoftonline.com/{MS_TENANT_ID}"
+SCOPE = ["user.read"]
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=getattr(logging, LOGGING["level"]),
+    format=LOGGING["format"]
 )
 logger = logging.getLogger(__name__)
+
+# Helper function for logging query details
+def log_query_details(log_entry: Dict[str, Any]):
+    try:
+        with open(QUERY_LOG_FILE, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
+    except Exception as e:
+        logger.error(f"Failed to write to query log file: {e}")
 
 # Define metrics
 query_counter = Counter('sql_queries_total', 'Total SQL queries executed')
@@ -44,7 +72,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=API["cors_origins"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,7 +84,7 @@ import asyncio
 
 
 class RateLimiter:
-    def __init__(self, requests_per_minute=60):
+    def __init__(self, requests_per_minute=API["rate_limit_per_minute"]):
         self.requests_per_minute = requests_per_minute
         self.requests = defaultdict(list)
         self.cleanup_interval = 60
@@ -90,7 +118,7 @@ class RateLimiter:
                 del self.requests[ip]
 
 
-rate_limiter = RateLimiter(requests_per_minute=30)
+rate_limiter = RateLimiter(requests_per_minute=API["rate_limit_per_minute"])
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -99,6 +127,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 memory_service = MemoryService()
 suggestion_service = SuggestionService()
 sql_agent = SQLAgent()
+visualization_service = VisualizationService()
 
 
 class QueryRequest(BaseModel):
@@ -122,6 +151,13 @@ class QueryResponse(BaseModel):
     suggestions: List[str]
     session_id: str
     execution_time: Optional[float] = None
+    results: Optional[Dict[str, Any]] = None
+
+
+class VisualizationRequest(BaseModel):
+    question: str
+    sqlQuery: str
+    results: Dict[str, Any]
 
 
 @app.exception_handler(Exception)
@@ -179,20 +215,150 @@ async def add_process_time_header(request: Request, call_next):
         raise
 
 
+
+class AccessTokenMiddleware:
+    def __init__(self, app: FastAPI):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            # request = Request(scope, receive) # No longer needed for this bypassed version
+            # Skip token check for public routes AND metrics
+            # if request.url.path in ["/signIn", "/login", "/auth/callback", "/metrics", "/health"] or request.url.path.startswith("/static"):
+            #     await self.app(scope, receive, send)
+            #     return
+            #
+            # # Check for access_token in cookies
+            # access_token = request.cookies.get("access_token")
+            # if not access_token:
+            #     # Redirect to login if token is not present send to login.html
+            #     response = RedirectResponse(url="/signIn")
+            #     await response(scope, receive, send)
+            #     return
+            # Authentication bypassed
+            await self.app(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
+
+@app.get("/login")
+async def login(request: Request):
+    # Construct MS_REDIRECT_URI dynamically
+    dynamic_redirect_uri = f"{request.url.scheme}://{request.url.netloc}/auth/callback"
+    logger.info(f"Dynamic MS_REDIRECT_URI for /login: {dynamic_redirect_uri}")
+
+    cca = ConfidentialClientApplication(
+        MS_CLIENT_ID, authority=AUTHORITY, client_credential=MS_CLIENT_SECRET
+    )
+    auth_url = cca.get_authorization_request_url(
+        SCOPE, redirect_uri=dynamic_redirect_uri
+    )
+    return RedirectResponse(auth_url)
+
+@app.get("/signin", response_class=HTMLResponse, include_in_schema=False)
+async def login_html_lowercase(request: Request):
+    path = Path(__file__).parent.parent / "static/login.html"
+    with open(path, "r") as f:
+        return HTMLResponse(content=f.read(), status_code=200)
+
+@app.get("/signIn", response_class=HTMLResponse)
+async def login_html(request: Request):
+    path = Path(__file__).parent.parent / "static/login.html"
+    with open(path, "r") as f:
+        return HTMLResponse(content=f.read(), status_code=200)
+
+
+@app.get("/auth/callback")
+async def auth_callback(request: Request):
+    code = request.query_params.get("code")
+    if not code:
+        return HTMLResponse("No code returned", status_code=400)
+
+    # Construct MS_REDIRECT_URI dynamically for validation
+    dynamic_redirect_uri = f"{request.url.scheme}://{request.url.netloc}/auth/callback"
+    logger.info(f"Dynamic MS_REDIRECT_URI for /auth/callback: {dynamic_redirect_uri}")
+
+    cca = ConfidentialClientApplication(
+        MS_CLIENT_ID, authority=AUTHORITY, client_credential=MS_CLIENT_SECRET
+    )
+    result = cca.acquire_token_by_authorization_code(
+        code,
+        scopes=SCOPE,
+        redirect_uri=dynamic_redirect_uri,
+    )
+    if "id_token_claims" in result:
+        user_email = result["id_token_claims"].get("preferred_username")
+        user_name = result["id_token_claims"].get("name")
+        expires_in = result.get("expires_in", 3600)  # Default to 1 hour if not provided
+        expiration_time = datetime.utcnow() + timedelta(seconds=expires_in)
+
+        print ("User Email", user_email)
+        print("username", user_name)
+        response = RedirectResponse(url="/home")
+        
+        response.set_cookie("access_token", result["access_token"], expires=expires_in)
+        response.set_cookie(key="user_email", value=user_email, expires=expires_in)
+        response.set_cookie(key="user_name", value=user_name, expires=expires_in)
+
+
+        return response
+    else:
+        return HTMLResponse("Error logging in", status_code=401)
+
+
 @app.get("/")
-async def read_root():
-    return FileResponse("static/index.html")
+@app.get("/home", response_class=HTMLResponse)
+async def home(request: Request):
+    user_email = request.cookies.get("user_email") or "user@example.com" # Default value
+    user_name = request.cookies.get("user_name") or "Test User" # Default value
+    # No redirect if user_email is not found
+
+    # add json to index.html using templates
+    path = Path(__file__).parent.parent / "static/index.html"
+    with open(path, "r") as f:
+        content = f.read()
+        
+        # Safely get initial from username
+        initial = ""
+        if user_name:
+            parts = user_name.split(" ")
+            if len(parts) == 1:
+                initial = parts[0][0] if parts[0] else ""
+            elif len(parts) > 1:
+                initial = (parts[0][0] if parts[0] else "") + (parts[1][0] if parts[1] else "")
+        initial = initial.upper() if initial else "TU" # Default initial if extraction fails
+
+
+        content = content.replace("{{ user_email }}", user_email)
+        content = content.replace("{{ user_name }}", user_name)
+        content = content.replace("{{ initial }}", initial)
+        return HTMLResponse(content=content, status_code=200)
 
 
 @app.post("/api/query", response_model=QueryResponse)
-async def process_query(request: QueryRequest, background_tasks: BackgroundTasks):
+async def process_query(request: QueryRequest, background_tasks: BackgroundTasks, req: Request):
     """Process a natural language query with comprehensive error handling"""
     query_start_time = time.time()
     query_counter.inc()
 
     try:
-        # Get or create session ID
-        session_id = request.session_id or memory_service.create_session()
+        # Get or create persistent session ID from cookie
+        session_id = request.session_id
+        response_cookies = {}
+
+        if not session_id:
+            # If no session ID provided, check for cookie
+            session_cookie = req.cookies.get("query_session_id")
+            if session_cookie:
+                session_id = session_cookie
+                logger.info(f"Using existing session from cookie: {session_id}")
+            else:
+                # Create new session ID if none exists
+                session_id = memory_service.create_session()
+                logger.info(f"Created new session: {session_id}")
+                # Set cookie for future requests
+                response_cookies["query_session_id"] = session_id
+
         active_sessions.inc()
 
         # Get conversation history
@@ -240,13 +406,41 @@ async def process_query(request: QueryRequest, background_tasks: BackgroundTasks
         # Schedule session cleanup in background
         background_tasks.add_task(memory_service.extend_session, session_id)
 
-        return QueryResponse(
+        # Log query details to file
+        log_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "session_id": session_id,
+            "nl_query": request.query,
+            "sql_query_generated": result["sql_query"],
+            "nl_response": result["answer"],
+            "suggestions": suggestions,
+            "raw_results_preview": result.get("results", {}).get("rows", [])[:10] # Log first 10 rows of results as preview
+        }
+        log_query_details(log_data)
+
+        response = QueryResponse(
             answer=result["answer"],
             sql_query=result["sql_query"],
             suggestions=suggestions,
             session_id=session_id,
-            execution_time=query_duration
+            execution_time=query_duration,
+            results=result.get("results")
         )
+
+        # Create the response and set cookies if needed
+        response_obj = JSONResponse(content=jsonable_encoder(response))
+
+        # Set session cookie if needed
+        if "query_session_id" in response_cookies:
+            response_obj.set_cookie(
+                key="query_session_id",
+                value=response_cookies["query_session_id"],
+                httponly=True,
+                max_age=MEMORY["session_ttl"],  # Use your session TTL from config
+                samesite="lax"  # Can be "strict", "lax", or "none"
+            )
+
+        return response_obj
 
     except HTTPException:
         raise
@@ -256,6 +450,30 @@ async def process_query(request: QueryRequest, background_tasks: BackgroundTasks
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         active_sessions.dec()
+
+
+@app.post("/api/visualization-recommendation")
+async def visualization_recommendation(request: VisualizationRequest):
+    """Get a visualization recommendation for SQL query results"""
+    try:
+        logger.info(f"Visualization recommendation requested for question: {request.question}")
+
+        recommendation = await visualization_service.recommend_visualization(
+            question=request.question,
+            sql_query=request.sqlQuery,
+            results=request.results
+        )
+
+        logger.debug(f"Visualization recommendation: {recommendation.model_dump_json(indent=2)}")
+        return recommendation
+
+    except Exception as e:
+        logger.error(f"Error recommending visualization: {str(e)}", exc_info=True)
+        error_counter.labels(error_type="visualization_error").inc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating visualization recommendation: {str(e)}"
+        )
 
 
 @app.get("/api/history/{session_id}")
@@ -292,7 +510,6 @@ async def health_check():
         "version": "1.0.0"
     }
 
-
 @app.get("/health/detailed")
 async def detailed_health_check():
     """Detailed health check with component status"""
@@ -309,7 +526,6 @@ async def detailed_health_check():
     except Exception as e:
         health_status["components"]["database"] = {"status": "unhealthy", "error": str(e)}
         health_status["status"] = "unhealthy"
-
     # Check Redis connection
     try:
         memory_service.redis_client.ping()
@@ -335,11 +551,52 @@ async def detailed_health_check():
     return health_status
 
 
+# Update the metrics endpoint in main.py
 @app.get("/metrics")
 async def metrics():
     """Prometheus metrics endpoint"""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    """Middleware to add process time header and handle rate limiting"""
+    start_time = time.time()
+    client_ip = request.client.host
+
+    # Skip rate limiting for metrics endpoint
+    if request.url.path == "/metrics":
+        response = await call_next(request)
+        return response
+
+    # Check rate limit for API endpoints
+    if request.url.path.startswith("/api/"):
+        if not await rate_limiter.check_rate_limit(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={"error": "Too many requests", "detail": "Please try again later"}
+            )
+
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        response.headers["X-Process-Time"] = str(process_time)
+        return response
+    except Exception as e:
+        logger.error(f"Error in middleware: {str(e)}")
+        error_counter.labels(error_type="middleware_error").inc()
+        raise
+
+@app.post("/api/debug/clear-cache", include_in_schema=False)
+async def clear_cache():
+    """Debug endpoint to clear SQL query cache"""
+    try:
+        from app.agents.sql_agent import SQLAgent
+        sql_agent = SQLAgent()
+        sql_agent.clear_query_cache()
+        return {"status": "success", "message": "SQL query cache cleared"}
+    except Exception as e:
+        logger.error(f"Error clearing cache: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Cleanup tasks on shutdown
 @app.on_event("shutdown")
@@ -347,3 +604,24 @@ async def shutdown_event():
     """Cleanup resources on shutdown"""
     logger.info("Shutting down application")
     # Add any cleanup tasks here
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize connections and verify Redis is accessible"""
+    try:
+        # Test Redis connection
+        redis_client = redis.Redis(
+            host=REDIS["host"],
+            port=REDIS["port"],
+            socket_timeout=2,
+            socket_connect_timeout=2
+        )
+        response = redis_client.ping()
+        if response:
+            logger.info("Redis connection successful")
+        else:
+            logger.error("Redis connection failed - ping returned falsy value")
+    except Exception as e:
+        logger.error(f"Failed to connect to Redis during startup: {str(e)}")
+

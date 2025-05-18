@@ -2,14 +2,21 @@ import redis
 import json
 import uuid
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta  # Add timedelta here
 import os
 import logging
 from functools import wraps
 import time
 
+from app.config import REDIS, MEMORY, CACHE
+
 logger = logging.getLogger(__name__)
 
+def json_serialize(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    return str(obj)
 
 def with_redis_fallback(func):
     """Decorator to handle Redis connection failures gracefully"""
@@ -38,11 +45,11 @@ def with_redis_fallback(func):
 
 class MemoryService:
     def __init__(self):
-        self.redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
-        self.session_ttl = 3600 * 24  # 24 hours
-        self.history_limit = 10  # Keep last 10 conversations
-        self.max_retries = 3
-        self.retry_delay = 1  # seconds
+        self.redis_url = REDIS["url"]
+        self.session_ttl = MEMORY["session_ttl"]
+        self.history_limit = MEMORY["history_limit"]
+        self.max_retries = MEMORY["max_retries"]
+        self.retry_delay = MEMORY["retry_delay"]
 
         self._connect_with_retry()
 
@@ -50,8 +57,9 @@ class MemoryService:
         """Connect to Redis with retry logic"""
         for attempt in range(self.max_retries):
             try:
-                self.redis_client = redis.Redis.from_url(
-                    self.redis_url,
+                self.redis_client = redis.Redis(
+                    host=REDIS["host"],
+                    port=REDIS["port"],
                     decode_responses=True,
                     socket_timeout=5,
                     socket_connect_timeout=5,
@@ -96,12 +104,12 @@ class MemoryService:
             logger.error(f"Error creating session: {str(e)}")
             return session_id  # Return the ID even if Redis fails
 
-    @with_redis_fallback
     def add_to_history(self, session_id: str, query: str, answer: str, sql_query: str):
         """Add a conversation to history with error handling"""
         try:
             history_key = f"history:{session_id}"
 
+            # Create conversation entry
             conversation = {
                 "timestamp": datetime.utcnow().isoformat(),
                 "query": query,
@@ -113,6 +121,7 @@ class MemoryService:
             self.redis_client.lpush(history_key, json.dumps(conversation))
 
             # Trim to keep only last N conversations
+            # This is the key line to ensure we keep the last 5 conversations
             self.redis_client.ltrim(history_key, 0, self.history_limit - 1)
 
             # Set expiry on the history
@@ -164,11 +173,19 @@ class MemoryService:
     def get_cached_query(self, session_id: str, query: str) -> Optional[Dict[str, Any]]:
         """Get cached query result with error handling"""
         try:
-            cache_key = f"query_result:{session_id}:{hash(query)}"
+            # Normalize query by removing whitespace and converting to lowercase
+            normalized_query = " ".join(query.lower().split())
+
+            # Use a simple hash function less prone to variation
+            import hashlib
+            query_hash = hashlib.md5(normalized_query.encode()).hexdigest()
+
+            cache_key = f"query_result:{session_id}:{query_hash}"
 
             cached_result = self.redis_client.get(cache_key)
             if cached_result:
                 try:
+                    logger.info(f"Cache hit for query in session {session_id}")
                     return json.loads(cached_result)
                 except json.JSONDecodeError as e:
                     logger.warning(f"Failed to parse cached query: {str(e)}")
@@ -180,8 +197,11 @@ class MemoryService:
             return None
 
     @with_redis_fallback
-    def cache_query_result(self, session_id: str, query: str, result: Dict[str, Any], ttl: int = 300):
+    def cache_query_result(self, session_id: str, query: str, result: Dict[str, Any], ttl: int = None):
         """Cache a query result with error handling"""
+        if ttl is None:
+            ttl = CACHE["query_cache_ttl"]
+
         try:
             cache_key = f"query_result:{session_id}:{hash(query)}"
 
